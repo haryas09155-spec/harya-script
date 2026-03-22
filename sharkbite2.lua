@@ -1,4 +1,4 @@
----loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/sharkbite2.lau"))()
+---loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/sharkbite2.lua"))()
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
@@ -14,8 +14,8 @@ local Window = Rayfield:CreateWindow({
 		FileName = "SharkConfig"
 	},
 	Discord = {
-		Enabled = false,
-		Invite = "",
+		Enabled = true,
+		Invite = "https://discord.gg/M6Pcqt3AR9",
 		RememberJoins = true
 	},
 	KeySystem = false
