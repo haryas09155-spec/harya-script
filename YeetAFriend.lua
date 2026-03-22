@@ -1,222 +1,305 @@
 ---loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/YeetAFriend.lua"))()
-
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-	Name = "Yeet a Friend",
-	LoadingTitle = "Yeet a Friend Haryas script",
-	LoadingSubtitle = "by Haryas",
-	Theme = "Default",
-	ToggleUIKeybind = "K",
-	ConfigurationSaving = {
-		Enabled = true,
-		FolderName = nil,
-		FileName = "YeetConfig"
-	},
-	Discord = {
-		Enabled = true,
-		Invite = "https://discord.gg/M6Pcqt3AR9",
-		RememberJoins = true
-	},
-	KeySystem = false
+   Name = "Yeet A Friend",
+   LoadingTitle = "Yeet A Friend Haryas Script",
+   LoadingSubtitle = "by Haryas",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "YeetAFriendHub",
+      FileName = "YeetAFriendConfig"
+   },
+   Discord = {
+      Enabled = true,
+      Invite = "https://discord.gg/M6Pcqt3AR9", 
+      RememberJoins = true
+   },
+   KeySystem = false
 })
 
-local MainTab = Window:CreateTab("Main", 4483362458)
-print("MainTab created")
+local Tabs = {
+   Main = Window:CreateTab("Main", 4483362458),
+   Player = Window:CreateTab("Player", 4483362458),
+   Misc = Window:CreateTab("Misc", 4483362458)
+}
 
-MainTab:CreateSection("Auto Farm")
+-- Anti-AFK
+local vu = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+   vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+   vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end)
 
 -- Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
 
-local LocalPlayer = Players.LocalPlayer
+-- Variables
+local speedConnection
+local espConnections = {}
+local godmodeEnabled = false
+local superThrowEnabled = false
 
--- Toggles
-local toggles = {}
+-- Get Rubux Pets (Fire remotes for pet spawning)
+local getPetsSection = Tabs.Main:CreateSection("Get Rubux Pets")
 
--- Update character
-local function getCharacter()
-   return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-end
-
--- 1. INFINITE RUBUX/PETS
-MainTab:CreateToggle({
-   Name = "Infinite Rubux & Pets",
+local petToggle = Tabs.Main:CreateToggle({
+   Name = "Get Rubux Pets (Auto)",
    CurrentValue = false,
-   Callback = function(value)
-      toggles.Infinite = value
-      if value then
+   Flag = "GetPetsToggle",
+   Callback = function(Value)
+      if Value then
          spawn(function()
-            while toggles.Infinite do
-               for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-                  if remote:IsA("RemoteEvent") then
-                     local name = remote.Name:lower()
-                     if name:find("rubux") or name:find("money") or name:find("pet") or name:find("claim") then
-                        pcall(function() remote:FireServer(999999999) end)
-                     end
-                  end
-               end
-               wait(0.5)
+            while getconnections and getconnections(Tabs.Main.Flags.GetPetsToggle) do
+               pcall(function()
+                  ReplicatedStorage.Remotes.SpawnPet:FireServer("RubuxPet") -- Adjust remote name
+                  ReplicatedStorage.Remotes.EquipPet:FireServer("RubuxPet")
+               end)
+               wait(1)
             end
          end)
       end
    end,
 })
 
--- 2. AUTO COLLECT
-MainTab:CreateToggle({
-   Name = "Auto Collect Stars",
+-- Super Throw (E Key)
+local throwSection = Tabs.Main:CreateSection("Super Throw")
+local superThrowToggle = Tabs.Main:CreateToggle({
+   Name = "Super Throw (E Key)",
    CurrentValue = false,
-   Callback = function(value)
-      toggles.Collect = value
-      if value then
+   Flag = "SuperThrowToggle",
+   Callback = function(Value)
+      superThrowEnabled = Value
+   end,
+})
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+   if gameProcessed then return end
+   if input.KeyCode == Enum.KeyCode.E and superThrowEnabled then
+      pcall(function()
+         local character = player.Character
+         if character and character:FindFirstChild("HumanoidRootPart") then
+            local target = character.HumanoidRootPart.Position + Vector3.new(math.random(-50,50), 50, math.random(-50,50))
+            ReplicatedStorage.Remotes.YeetPlayer:FireServer(target * 100) -- Multiply distance for super throw
+         end
+      end)
+   end
+end)
+
+-- Collect Stars
+local collectSection = Tabs.Main:CreateSection("Auto Collect")
+local collectToggle = Tabs.Main:CreateToggle({
+   Name = "Collect Stars",
+   CurrentValue = false,
+   Flag = "CollectStarsToggle",
+   Callback = function(Value)
+      if Value then
          spawn(function()
-            while toggles.Collect do
-               local char = getCharacter()
-               local hrp = char:FindFirstChild("HumanoidRootPart")
-               if hrp then
-                  for _, obj in pairs(Workspace:GetChildren()) do
-                     if obj:IsA("BasePart") and (obj.Name:lower():find("star") or obj.Name:lower():find("coin")) then
-                        pcall(function()
-                           firetouchinterest(hrp, obj, 0)
-                           firetouchinterest(hrp, obj, 1)
-                        end)
+            while collectToggle.Flags.CollectStarsToggle do
+               pcall(function()
+                  for _, star in pairs(workspace.Stars:GetChildren()) do
+                     if star:IsA("BasePart") then
+                        ReplicatedStorage.Remotes.CollectStar:FireServer(star)
                      end
                   end
-               end
-               wait(0.3)
+               end)
+               wait(0.1)
             end
          end)
       end
    end,
 })
 
--- 3. AUTO REBIRTH
-MainTab:CreateToggle({
+-- Auto Rebirth
+local rebirthToggle = Tabs.Main:CreateToggle({
    Name = "Auto Rebirth",
    CurrentValue = false,
-   Callback = function(value)
-      toggles.Rebirth = value
-      if value then
+   Flag = "AutoRebirthToggle",
+   Callback = function(Value)
+      if Value then
          spawn(function()
-            while toggles.Rebirth do
-               for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-                  if remote:IsA("RemoteEvent") and remote.Name:lower():find("rebirth") then
-                     pcall(function() remote:FireServer() end)
-                  end
-               end
-               wait(4)
+            while rebirthToggle.Flags.AutoRebirthToggle do
+               pcall(function()
+                  ReplicatedStorage.Remotes.Rebirth:FireServer()
+               end)
+               wait(5)
             end
          end)
       end
    end,
 })
 
--- 4. SUPER YEET
-MainTab:CreateToggle({
-   Name = "Super Yeet (E Key)",
+-- Yeet All
+local yeetAllToggle = Tabs.Main:CreateToggle({
+   Name = "Yeet All Players",
    CurrentValue = false,
-   Callback = function(value)
-      toggles.Yeet = value
+   Flag = "YeetAllToggle",
+   Callback = function(Value)
+      if Value then
+         for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character then
+               pcall(function()
+                  ReplicatedStorage.Remotes.YeetPlayer:FireServer(plr.Character.HumanoidRootPart.Position + Vector3.new(0, 100, 0))
+               end)
+            end
+         end
+         yeetAllToggle:Set(false)
+      end
    end,
 })
 
-game:GetService("UserInputService").InputBegan:Connect(function(input)
-   if toggles.Yeet and input.KeyCode == Enum.KeyCode.E then
-      local char = getCharacter()
-      local hrp = char.HumanoidRootPart
-      for _, player in pairs(Players:GetPlayers()) do
-         if player ~= LocalPlayer and player.Character then
-            local target = player.Character:FindFirstChild("HumanoidRootPart")
-            if target and (target.Position - hrp.Position).Magnitude < 50 then
-               local bv = Instance.new("BodyVelocity")
-               bv.MaxForce = Vector3.new(40000,40000,40000)
-               bv.Velocity = Vector3.new(0,200,0)
-               bv.Parent = target
-               game:GetService("Debris"):AddItem(bv, 2)
+-- Player Mods
+local speedSlider = Tabs.Player:CreateSlider({
+   Name = "Walk Speed",
+   Range = {16, 500},
+   Increment = 1,
+   CurrentValue = 16,
+   Flag = "WalkSpeedSlider",
+   Callback = function(Value)
+      if player.Character and player.Character:FindFirstChild("Humanoid") then
+         player.Character.Humanoid.WalkSpeed = Value
+      end
+   end,
+})
+
+Tabs.Player:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "InfiniteJumpToggle",
+   Callback = function(Value)
+      if Value then
+         local conn
+         conn = game:GetService("UserInputService").JumpRequest:Connect(function()
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+               player.Character.Humanoid:ChangeState("Jumping")
+            end
+         end)
+         Tabs.Player.Flags.InfiniteJumpToggle = conn
+      else
+         if typeof(Tabs.Player.Flags.InfiniteJumpToggle) == "RBXScriptConnection" then
+            Tabs.Player.Flags.InfiniteJumpToggle:Disconnect()
+         end
+      end
+   end,
+})
+
+-- Godmode
+local godmodeToggle = Tabs.Player:CreateToggle({
+   Name = "Godmode",
+   CurrentValue = false,
+   Flag = "GodmodeToggle",
+   Callback = function(Value)
+      godmodeEnabled = Value
+      spawn(function()
+         while godmodeEnabled do
+            pcall(function()
+               if player.Character and player.Character:FindFirstChild("Humanoid") then
+                  player.Character.Humanoid.Health = 100
+                  player.Character.Humanoid.MaxHealth = math.huge
+               end
+            end)
+            wait(0.1)
+         end
+      end)
+   end,
+})
+
+-- ESP Section
+local espSection = Tabs.Player:CreateSection("ESP")
+local espToggle = Tabs.Player:CreateToggle({
+   Name = "Player ESP",
+   CurrentValue = false,
+   Flag = "ESPToggle",
+   Callback = function(Value)
+      for _, connection in pairs(espConnections) do
+         connection:Disconnect()
+      end
+      espConnections = {}
+      
+      if Value then
+         for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= player and plr.Character then
+               local espConn = RunService.Heartbeat:Connect(function()
+                  pcall(function()
+                     if plr.Character and plr.Character:FindFirstChild("Head") then
+                        local head = plr.Character.Head
+                        local billboard = head:FindFirstChild("ESP") or Instance.new("BillboardGui")
+                        billboard.Name = "ESP"
+                        billboard.Parent = head
+                        billboard.Size = UDim2.new(0, 100, 0, 50)
+                        billboard.StudsOffset = Vector3.new(0, 2, 0)
+                        
+                        local text = billboard:FindFirstChild("ESPText") or Instance.new("TextLabel")
+                        text.Name = "ESPText"
+                        text.Parent = billboard
+                        text.Size = UDim2.new(1, 0, 1, 0)
+                        text.BackgroundTransparency = 1
+                        text.Text = plr.Name
+                        text.TextColor3 = Color3.new(1, 0, 0)
+                        text.TextStrokeTransparency = 0
+                        text.TextScaled = true
+                        text.Font = Enum.Font.SourceSansBold
+                     end
+                  end)
+               end)
+               table.insert(espConnections, espConn)
             end
          end
+      end
+   end,
+})
+
+-- Speed Hook (metatable protection bypass)
+local mt = getrawmetatable(game)
+local old = mt.__namecall
+setreadonly(mt, false)
+mt.__namecall = newcclosure(function(self, ...)
+   local method = getnamecallmethod()
+   local args = {...}
+   if method == "FireServer" and tostring(self) == "WalkSpeed" then
+      return
+   end
+   return old(self, ...)
+end)
+setreadonly(mt, true)
+
+-- Speed update connection
+spawn(function()
+   while wait() do
+      if player.Character and player.Character:FindFirstChild("Humanoid") then
+         player.Character.Humanoid.WalkSpeed = Tabs.Player.Flags.WalkSpeedSlider or 16
       end
    end
 end)
 
--- 5. GODMODE
-MainTab:CreateToggle({
-   Name = "Godmode",
-   CurrentValue = false,
-   Callback = function(value)
-      local char = getCharacter()
-      local hum = char:FindFirstChild("Humanoid")
-      if value then
-         hum.MaxHealth = math.huge
-         hum.Health = math.huge
-      else
-         hum.MaxHealth = 100
-         hum.Health = 100
-      end
+-- Toggle UI Keybind
+Rayfield:LoadConfiguration()
+
+local ToggleUI = Tabs.Misc:CreateKeybind({
+   Name = "Toggle UI",
+   CurrentKeybind = "K",
+   HoldToInteract = false,
+   Flag = "ToggleUIBind",
+   Callback = function(Keybind)
+      Rayfield:Toggle()
    end,
 })
 
--- 6. SPEED SLIDER
-MainTab:CreateSlider({
-   Name = "Speed",
-   Range = {16, 300},
-   Increment = 10,
-   CurrentValue = 50,
-   Callback = function(value)
-      local char = getCharacter()
-      local hum = char:FindFirstChild("Humanoid")
-      hum.WalkSpeed = value
-   end,
-})
-
--- 7. YEET ALL BUTTON
-MainTab:CreateButton({
-   Name = "YEET EVERYONE",
+Tabs.Misc:CreateButton({
+   Name = "Rejoin Server",
    Callback = function()
-      local char = getCharacter()
-      local hrp = char.HumanoidRootPart
-      for _, player in pairs(Players:GetPlayers()) do
-         if player ~= LocalPlayer and player.Character then
-            local target = player.Character.HumanoidRootPart
-            local bv = Instance.new("BodyVelocity")
-            bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-            bv.Velocity = Vector3.new(math.random(-100,100), 300, math.random(-100,100))
-            bv.Parent = target
-            game.Debris:AddItem(bv, 3)
-         end
-      end
+      game:GetService("TeleportService"):Teleport(game.PlaceId, player)
    end,
 })
-
--- 8. ESP
-MainTab:CreateToggle({
-   Name = "Player ESP",
-   CurrentValue = false,
-   Callback = function(value)
-      if value then
-         for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-               local esp = Instance.new("Highlight", player.Character)
-               esp.FillColor = Color3.new(1,0,0)
-               esp.OutlineColor = Color3.new(1,1,1)
-            end
-         end
-      else
-         for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("Highlight") then obj:Destroy() end
-         end
-      end
-   end,
-})
-
-print("Yeet A Friend script fully loaded!")
 
 Rayfield:Notify({
-   Title = "✅ SCRIPT WORKING",
-   Content = "All features active!\nE = Super Yeet\nRightControl = Toggle UI",
-   Duration = 5
+   Title = "Yeet A Friend",
+   Content = "Enjoy the script! Press K to toggle UI.And join discord https://discord.gg/M6Pcqt3AR9",
+   Duration = 5,
+   Image = 4483362458,
 })
