@@ -21,7 +21,7 @@ local Window = Rayfield:CreateWindow({
 	KeySystem = false
 })
 
-local MainTab = Window:CreateTab("Main Hacks", 4483362458)
+local MainTab = Window:CreateTab("Main", 4483362458)
 print("MainTab created")
 
 MainTab:CreateSection("Auto Farm")
