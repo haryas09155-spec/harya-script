@@ -3,7 +3,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Yeet A Friend Hub",
-   LoadingTitle = "Yeet A Friend Haryas script",
+   LoadingTitle = "Injecting Yeet A Friend",
    LoadingSubtitle = "by Haryas",
    ConfigurationSaving = {
       Enabled = true,
@@ -240,3 +240,9 @@ Rayfield:Notify({
    Duration = 6.5,
    Image = 4483362458,
 })
+
+print("=== Yeet A Friend Hub v2.0 Active ===")
+print("- Free Rubux Pets: Toggle ON")
+print("- Super Throw: Hold E")
+print("- Auto Stars/Rebirth: FarmTab")
+print("- Dynamic remote finder working")
