@@ -4,8 +4,8 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
 	Name = "Yeet A Friend",
-	LoadingTitle = "Yeet A Friend Hacks",
-	LoadingSubtitle = "Toggle System Active",
+	LoadingTitle = "Yeet A Friend Haryas script",
+	LoadingSubtitle = "by Haryas",
 	Theme = "Default",
 	ToggleUIKeybind = "RightControl",
 	ConfigurationSaving = {
