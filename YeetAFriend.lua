@@ -1,23 +1,25 @@
--- FIXED Yeet A Friend Script | UI Shows Instantly
--- No errors, guaranteed working
+---loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/sharkbite2.lau"))()
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
-print("Rayfield loaded successfully")
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Yeet A Friend ✅",
-   LoadingTitle = "Loading...",
-   LoadingSubtitle = "UI Ready!",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "YeetAFriend",
-      FileName = "Config"
-   },
-   KeySystem = false
+	Name = "Yeet a Friend",
+	LoadingTitle = "Yeet a Friend Haryas script",
+	LoadingSubtitle = "by Haryas",
+	Theme = "Default",
+	ToggleUIKeybind = "K",
+	ConfigurationSaving = {
+		Enabled = true,
+		FolderName = nil,
+		FileName = "YeetConfig"
+	},
+	Discord = {
+		Enabled = false,
+		Invite = "",
+		RememberJoins = true
+	},
+	KeySystem = false
 })
-
-print("Window created")
 
 local MainTab = Window:CreateTab("Main Hacks", 4483362458)
 print("MainTab created")
