@@ -1,21 +1,24 @@
----loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/Haryas script 15+.lua"))()
-repeat wait() until game:IsLoaded()
+---loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/sharkbite2.lua"))()
 
--- Use the CORRECT Rayfield URL
-local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))()
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Haryas script Free 15+ Games",
-   LoadingTitle = "Haryas Script",
-   LoadingSubtitle = "by Haryas",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "haryashub",
-      FileName = "haryasconfig"
-   },
-   Discord = {
-      Enabled = false
-   }
+	Name = "Sharkbite 2",
+	LoadingTitle = "Sharkbite 2 Haryas script",
+	LoadingSubtitle = "by Haryas",
+	Theme = "Default",
+	ToggleUIKeybind = "K",
+	ConfigurationSaving = {
+		Enabled = true,
+		FolderName = nil,
+		FileName = "SharkConfig"
+	},
+	Discord = {
+		Enabled = true,
+		Invite = "https://discord.gg/M6Pcqt3AR9",
+		RememberJoins = true
+	},
+	KeySystem = false
 })
 
 local Tab = Window:CreateTab("Main", nil)
