@@ -1,56 +1,141 @@
 ---loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/Haryas script 15+.lua"))()
 repeat wait() until game:IsLoaded()
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Haryas script Free 15+ Games", "DarkTheme")
+-- Use the CORRECT Rayfield URL
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))()
 
-local MainTab = Window:NewTab("Main")
-local MainSection = MainTab:NewSection("Haryas Script")
+local Window = Rayfield:CreateWindow({
+   Name = "Haryas script Free 15+ Games",
+   LoadingTitle = "Haryas Script",
+   LoadingSubtitle = "by Haryas",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "haryashub",
+      FileName = "haryasconfig"
+   },
+   Discord = {
+      Enabled = false
+   }
+})
 
-MainSection:NewToggle("Enable Key System", "Toggle key system", function(state)
-    if state then
-        Library:Notify("Haryas Script", "Key system enabled", 3)
-    else
-        Library:Notify("Haryas Script", "Key system disabled", 3)
-    end
-end)
+local Tab = Window:CreateTab("Main", nil)
 
-MainSection:NewButton("Get Key", "Copy discord link", function()
-    setclipboard("https://discord.gg/M63UaYpk9E")
-    Library:Notify("Link Copied", "key in discord", 3)
-end)
+Tab:CreateToggle({
+   Name = "Enable Key System",
+   CurrentValue = false,
+   Flag = "KeySystemToggle",
+   Callback = function(Value)
+      if Value then
+         Rayfield:Notify({
+            Title = "Haryas Script",
+            Content = "Key system enabled",
+            Duration = 3,
+         })
+      else
+         Rayfield:Notify({
+            Title = "Haryas Script",
+            Content = "Key system disabled",
+            Duration = 3,
+         })
+      end
+   end,
+})
 
-MainSection:NewButton("Get Key (Rinku)", "Copy Haryas_Script", function()
-    setclipboard("Haryas_Script")
-    Library:Notify("Key Copied", "Haryas_Script copied!", 3)
-end)
+Tab:CreateButton({
+   Name = "Get Key",
+   Callback = function()
+      setclipboard("https://discord.gg/M63UaYpk9E")
+      Rayfield:Notify({
+         Title = "Link Copied",
+         Content = "key in discord",
+         Duration = 3,
+      })
+   end,
+})
 
-MainSection:NewButton("Join Discord", "Copy discord invite", function()
-    setclipboard("https://discord.gg/M63UaYpk9E")
-    Library:Notify("Discord Copied", "Discord invite copied!", 3)
-end)
+Tab:CreateButton({
+   Name = "Get Key (Rinku)",
+   Callback = function()
+      setclipboard("Haryas_Script")
+      Rayfield:Notify({
+         Title = "Key Copied",
+         Content = "Haryas_Script copied to clipboard",
+         Duration = 3,
+      })
+   end,
+})
 
-MainSection:NewButton("Key", "Copy key link", function()
-    setclipboard("https://discord.gg/M63UaYpk9E")
-    Library:Notify("Link Copied", "key in discord", 3)
-end)
+Tab:CreateButton({
+   Name = "Join Discord",
+   Callback = function()
+      setclipboard("https://discord.gg/M63UaYpk9E")
+      Rayfield:Notify({
+         Title = "Discord Copied",
+         Content = "Discord invite copied to clipboard",
+         Duration = 3,
+      })
+   end,
+})
 
-MainSection:NewTextBox("Enter Key", "Paste your key here", function(txt)
-    Library:Notify("Key Entered", "Validating: " .. txt, 4)
-end)
+Tab:CreateButton({
+   Name = "Key",
+   Callback = function()
+      setclipboard("https://discord.gg/M63UaYpk9E")
+      Rayfield:Notify({
+         Title = "Link Copied",
+         Content = "key in discord",
+         Duration = 3,
+      })
+   end,
+})
 
-MainSection:NewLabel("Supported Games:", "Jujutsu Infinite, Blox Fruits, Shindo Life, Rivals, Jailbreak, Dead Rails, The Forge +15!")
+Tab:CreateInput({
+   Name = "Enter Key",
+   PlaceholderText = "Paste your key here...",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      Rayfield:Notify({
+         Title = "Key Entered",
+         Content = "Validating key: " .. Text,
+         Duration = 4,
+      })
+   end,
+})
 
-MainSection:NewToggle("Auto Farm", "Enable autofarm", function(state)
-    -- Your autofarm code
-end)
+Tab:CreateParagraph({
+   Title = "Supported Games",
+   Content = "Jujutsu Infinite, Blox Fruits, Shindo Life, Rivals, Jailbreak, Dead Rails, 99 Nights in the Forest, The Forge, and more!"
+})
 
-MainSection:NewToggle("ESP", "Enable ESP", function(state)
-    -- Your ESP code
-end)
+Tab:CreateToggle({
+   Name = "Auto Farm",
+   CurrentValue = false,
+   Flag = "AutoFarmToggle",
+   Callback = function(Value)
+      -- Add your autofarm logic here
+   end,
+})
 
-MainSection:NewToggle("Speed Hack", "Enable speed", function(state)
-    -- Your speed code
-end)
+Tab:CreateToggle({
+   Name = "ESP",
+   CurrentValue = false,
+   Flag = "ESPToggle",
+   Callback = function(Value)
+      -- Add your ESP logic here
+   end,
+})
 
-Library:Notify("Haryas Hub Loaded", "gugu gagagag", 6)
+Tab:CreateToggle({
+   Name = "Speed Hack",
+   CurrentValue = false,
+   Flag = "SpeedToggle",
+   Callback = function(Value)
+      -- Add your speed hack logic here
+   end,
+})
+
+Rayfield:Notify({
+   Title = "Haryas Hub Loaded",
+   Content = "gugu gagagag",
+   Duration = 6.5,
+})
