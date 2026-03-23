@@ -1,22 +1,14 @@
----loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/YeetAFriend.lua"))()
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Yeet A Friend",
-   LoadingTitle = "Yeet A Friend Haryas Script",
-   LoadingSubtitle = "by Haryas",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "YeetAFriendHub",
-      FileName = "YeetAFriendConfig"
-   },
-   Discord = {
-      Enabled = true,
-      Invite = "https://discord.gg/M6Pcqt3AR9", 
-      RememberJoins = true
-   },
+   Name = "Yeet A Friend Hub v2",
+   LoadingTitle = "Loading...",
+   LoadingSubtitle = "Fixed Toggles",
+   ConfigurationSaving = {Enabled = true, FolderName = "YeetAFriend", FileName = "Config"},
+   Discord = {Enabled = true, Invite = "discord.gg/hackerai", RememberJoins = true},
    KeySystem = false
 })
+
 local Tabs = {
    Main = Window:CreateTab("Main", 4483362458),
    Player = Window:CreateTab("Player", 4483362458),
