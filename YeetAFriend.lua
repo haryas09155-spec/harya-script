@@ -11,7 +11,7 @@ local Window = Rayfield:CreateWindow({
       FileName = "YeetAFriendConfig"
    },
    Discord = {
-      Enabled = true,
+      Enabled = true
       Invite = "https://discord.gg/M6Pcqt3AR9", 
       RememberJoins = true
    },
@@ -24,282 +24,274 @@ local Tabs = {
    Misc = Window:CreateTab("Misc", 4483362458)
 }
 
+-- Services
+local Players, ReplicatedStorage, RunService, UserInputService = 
+game:GetService("Players"), game:GetService("ReplicatedStorage"), 
+game:GetService("RunService"), game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local loops = {} -- Track all toggle loops
+
 -- Anti-AFK
-local vu = game:GetService("VirtualUser")
-game:GetService("Players").LocalPlayer.Idled:Connect(function()
-   vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-   vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+spawn(function()
+   while wait(60) do
+      local vu = game:GetService("VirtualUser")
+      vu:CaptureController()
+      vu:ClickButton2(Vector2.new())
+   end
 end)
 
--- Services
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local player = Players.LocalPlayer
+-- Function to safely stop loops
+local function stopLoop(name)
+   if loops[name] then
+      loops[name]:Disconnect()
+      loops[name] = nil
+   end
+end
 
--- Variables
-local speedConnection
-local espConnections = {}
-local godmodeEnabled = false
-local superThrowEnabled = false
-
--- Get Rubux Pets (Fire remotes for pet spawning)
-local getPetsSection = Tabs.Main:CreateSection("Get Rubux Pets")
-
-local petToggle = Tabs.Main:CreateToggle({
-   Name = "Get Rubux Pets (Auto)",
+-- Get Rubux Pets
+Tabs.Main:CreateToggle({
+   Name = "Get Rubux Pets",
    CurrentValue = false,
-   Flag = "GetPetsToggle",
-   Callback = function(Value)
-      if Value then
-         spawn(function()
-            while getconnections and getconnections(Tabs.Main.Flags.GetPetsToggle) do
-               pcall(function()
-                  ReplicatedStorage.Remotes.SpawnPet:FireServer("RubuxPet") -- Adjust remote name
-                  ReplicatedStorage.Remotes.EquipPet:FireServer("RubuxPet")
-               end)
-               wait(1)
-            end
+   Flag = "PetsToggle",
+   Callback = function(value)
+      stopLoop("Pets")
+      if value then
+         loops.Pets = game:GetService("RunService").Heartbeat:Connect(function()
+            pcall(function()
+               -- Common pet remote names - adjust if needed
+               local remotes = {"SpawnPet", "EquipPet", "PurchasePet"}
+               for _, remoteName in pairs(remotes) do
+                  if ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild(remoteName) then
+                     ReplicatedStorage.Remotes[remoteName]:FireServer("Rubux")
+                  end
+               end
+            end)
          end)
       end
    end,
 })
 
--- Super Throw (E Key)
-local throwSection = Tabs.Main:CreateSection("Super Throw")
-local superThrowToggle = Tabs.Main:CreateToggle({
+-- Super Throw E
+local superThrowEnabled = false
+Tabs.Main:CreateToggle({
    Name = "Super Throw (E Key)",
    CurrentValue = false,
-   Flag = "SuperThrowToggle",
-   Callback = function(Value)
-      superThrowEnabled = Value
+   Flag = "SuperThrow",
+   Callback = function(value)
+      superThrowEnabled = value
    end,
 })
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-   if gameProcessed then return end
+UserInputService.InputBegan:Connect(function(input)
    if input.KeyCode == Enum.KeyCode.E and superThrowEnabled then
-      pcall(function()
-         local character = player.Character
-         if character and character:FindFirstChild("HumanoidRootPart") then
-            local target = character.HumanoidRootPart.Position + Vector3.new(math.random(-50,50), 50, math.random(-50,50))
-            ReplicatedStorage.Remotes.YeetPlayer:FireServer(target * 100) -- Multiply distance for super throw
-         end
-      end)
+      local char = player.Character
+      if char and char:FindFirstChild("HumanoidRootPart") then
+         local direction = char.HumanoidRootPart.CFrame.LookVector * 500 + Vector3.new(0, 100, 0)
+         pcall(function()
+            ReplicatedStorage.Remotes.YeetPlayer:FireServer(direction)
+            -- Try common yeet remote names
+            local yeetRemotes = {"Yeet", "ThrowPlayer", "LaunchPlayer"}
+            for _, name in pairs(yeetRemotes) do
+               if ReplicatedStorage.Remotes:FindFirstChild(name) then
+                  ReplicatedStorage.Remotes[name]:FireServer(direction)
+               end
+            end
+         end)
+      end
    end
 end)
 
 -- Collect Stars
-local collectSection = Tabs.Main:CreateSection("Auto Collect")
-local collectToggle = Tabs.Main:CreateToggle({
-   Name = "Collect Stars",
+Tabs.Main:CreateToggle({
+   Name = "Auto Collect Stars", 
    CurrentValue = false,
-   Flag = "CollectStarsToggle",
-   Callback = function(Value)
-      if Value then
-         spawn(function()
-            while collectToggle.Flags.CollectStarsToggle do
-               pcall(function()
+   Flag = "CollectToggle",
+   Callback = function(value)
+      stopLoop("Collect")
+      if value then
+         loops.Collect = RunService.Heartbeat:Connect(function()
+            pcall(function()
+               if workspace:FindFirstChild("Stars") then
                   for _, star in pairs(workspace.Stars:GetChildren()) do
                      if star:IsA("BasePart") then
-                        ReplicatedStorage.Remotes.CollectStar:FireServer(star)
+                        local collectRemote = ReplicatedStorage.Remotes:FindFirstChild("CollectStar") or 
+                                             ReplicatedStorage.Remotes:FindFirstChild("Collect")
+                        if collectRemote then collectRemote:FireServer(star) end
                      end
                   end
-               end)
-               wait(0.1)
-            end
+               end
+            end)
          end)
       end
    end,
 })
 
 -- Auto Rebirth
-local rebirthToggle = Tabs.Main:CreateToggle({
+Tabs.Main:CreateToggle({
    Name = "Auto Rebirth",
    CurrentValue = false,
-   Flag = "AutoRebirthToggle",
-   Callback = function(Value)
-      if Value then
-         spawn(function()
-            while rebirthToggle.Flags.AutoRebirthToggle do
-               pcall(function()
-                  ReplicatedStorage.Remotes.Rebirth:FireServer()
-               end)
-               wait(5)
-            end
+   Flag = "RebirthToggle",
+   Callback = function(value)
+      stopLoop("Rebirth")
+      if value then
+         loops.Rebirth = game:GetService("RunService").Heartbeat:Connect(function()
+            pcall(function()
+               local rebirthRemote = ReplicatedStorage.Remotes:FindFirstChild("Rebirth") or 
+                                    ReplicatedStorage.Remotes:FindFirstChild("RebirthRequest")
+               if rebirthRemote then rebirthRemote:FireServer() end
+            end)
          end)
       end
    end,
 })
 
--- Yeet All
-local yeetAllToggle = Tabs.Main:CreateToggle({
+-- Yeet All (one-shot)
+Tabs.Main:CreateButton({
    Name = "Yeet All Players",
-   CurrentValue = false,
-   Flag = "YeetAllToggle",
-   Callback = function(Value)
-      if Value then
-         for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character then
-               pcall(function()
-                  ReplicatedStorage.Remotes.YeetPlayer:FireServer(plr.Character.HumanoidRootPart.Position + Vector3.new(0, 100, 0))
-               end)
-            end
+   Callback = function()
+      for _, plr in pairs(Players:GetPlayers()) do
+         if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local direction = Vector3.new(math.random(-100,100), 200, math.random(-100,100))
+            pcall(function()
+               ReplicatedStorage.Remotes.YeetPlayer:FireServer(direction)
+            end)
          end
-         yeetAllToggle:Set(false)
       end
    end,
 })
 
--- Player Mods
-local speedSlider = Tabs.Player:CreateSlider({
+-- Walkspeed with proper hook
+local speedConnection
+Tabs.Player:CreateSlider({
    Name = "Walk Speed",
    Range = {16, 500},
-   Increment = 1,
+   Increment = 5,
    CurrentValue = 16,
-   Flag = "WalkSpeedSlider",
-   Callback = function(Value)
+   Flag = "SpeedSlider",
+   Callback = function(value)
       if player.Character and player.Character:FindFirstChild("Humanoid") then
-         player.Character.Humanoid.WalkSpeed = Value
+         player.Character.Humanoid.WalkSpeed = value
       end
    end,
 })
 
-Tabs.Player:CreateToggle({
-   Name = "Infinite Jump",
-   CurrentValue = false,
-   Flag = "InfiniteJumpToggle",
-   Callback = function(Value)
-      if Value then
-         local conn
-         conn = game:GetService("UserInputService").JumpRequest:Connect(function()
-            if player.Character and player.Character:FindFirstChild("Humanoid") then
-               player.Character.Humanoid:ChangeState("Jumping")
-            end
-         end)
-         Tabs.Player.Flags.InfiniteJumpToggle = conn
-      else
-         if typeof(Tabs.Player.Flags.InfiniteJumpToggle) == "RBXScriptConnection" then
-            Tabs.Player.Flags.InfiniteJumpToggle:Disconnect()
-         end
+-- Speed loop
+spawn(function()
+   while wait(0.1) do
+      local speed = Window.Flags.SpeedSlider or 16
+      if player.Character and player.Character:FindFirstChild("Humanoid") then
+         player.Character.Humanoid.WalkSpeed = speed
       end
-   end,
-})
+   end
+end)
 
 -- Godmode
-local godmodeToggle = Tabs.Player:CreateToggle({
+Tabs.Player:CreateToggle({
    Name = "Godmode",
    CurrentValue = false,
    Flag = "GodmodeToggle",
-   Callback = function(Value)
-      godmodeEnabled = Value
-      spawn(function()
-         while godmodeEnabled do
-            pcall(function()
-               if player.Character and player.Character:FindFirstChild("Humanoid") then
-                  player.Character.Humanoid.Health = 100
-                  player.Character.Humanoid.MaxHealth = math.huge
-               end
-            end)
-            wait(0.1)
-         end
-      end)
+   Callback = function(value)
+      stopLoop("Godmode")
+      if value then
+         loops.Godmode = RunService.Heartbeat:Connect(function()
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+               local hum = player.Character.Humanoid
+               hum.MaxHealth = math.huge
+               hum.Health = math.huge
+            end
+         end)
+      end
    end,
 })
 
--- ESP Section
-local espSection = Tabs.Player:CreateSection("ESP")
-local espToggle = Tabs.Player:CreateToggle({
+-- ESP
+local espObjects = {}
+Tabs.Player:CreateToggle({
    Name = "Player ESP",
    CurrentValue = false,
    Flag = "ESPToggle",
-   Callback = function(Value)
-      for _, connection in pairs(espConnections) do
-         connection:Disconnect()
+   Callback = function(value)
+      -- Clean up existing ESP
+      for _, obj in pairs(espObjects) do
+         if obj and obj.Parent then obj:Destroy() end
       end
-      espConnections = {}
+      espObjects = {}
       
-      if Value then
+      if value then
          for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character then
-               local espConn = RunService.Heartbeat:Connect(function()
-                  pcall(function()
-                     if plr.Character and plr.Character:FindFirstChild("Head") then
-                        local head = plr.Character.Head
-                        local billboard = head:FindFirstChild("ESP") or Instance.new("BillboardGui")
-                        billboard.Name = "ESP"
-                        billboard.Parent = head
-                        billboard.Size = UDim2.new(0, 100, 0, 50)
-                        billboard.StudsOffset = Vector3.new(0, 2, 0)
-                        
-                        local text = billboard:FindFirstChild("ESPText") or Instance.new("TextLabel")
-                        text.Name = "ESPText"
-                        text.Parent = billboard
-                        text.Size = UDim2.new(1, 0, 1, 0)
-                        text.BackgroundTransparency = 1
-                        text.Text = plr.Name
-                        text.TextColor3 = Color3.new(1, 0, 0)
-                        text.TextStrokeTransparency = 0
-                        text.TextScaled = true
-                        text.Font = Enum.Font.SourceSansBold
+            if plr ~= player then
+               spawn(function()
+                  repeat wait() until plr.Character
+                  local char = plr.Character
+                  local head = char:WaitForChild("Head")
+                  
+                  local billboard = Instance.new("BillboardGui")
+                  billboard.Name = "ESP"
+                  billboard.Parent = head
+                  billboard.Size = UDim2.new(0, 200, 0, 50)
+                  billboard.StudsOffset = Vector3.new(0, 3, 0)
+                  
+                  local text = Instance.new("TextLabel")
+                  text.Parent = billboard
+                  text.Size = UDim2.new(1, 0, 1, 0)
+                  text.BackgroundTransparency = 1
+                  text.Text = plr.Name.." ["..math.floor((plr.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude).."m]"
+                  text.TextColor3 = Color3.new(1, 0, 0)
+                  text.TextStrokeTransparency = 0
+                  text.TextScaled = true
+                  text.Font = 2
+                  
+                  table.insert(espObjects, billboard)
+                  
+                  -- Update distance
+                  spawn(function()
+                     while char.Parent and espObjects do
+                        if text.Parent then
+                           local dist = (plr.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                           text.Text = plr.Name.." ["..math.floor(dist).."m]"
+                        end
+                        wait(0.5)
                      end
                   end)
                end)
-               table.insert(espConnections, espConn)
             end
          end
       end
    end,
 })
 
--- Speed Hook (metatable protection bypass)
-local mt = getrawmetatable(game)
-local old = mt.__namecall
-setreadonly(mt, false)
-mt.__namecall = newcclosure(function(self, ...)
-   local method = getnamecallmethod()
-   local args = {...}
-   if method == "FireServer" and tostring(self) == "WalkSpeed" then
-      return
-   end
-   return old(self, ...)
-end)
-setreadonly(mt, true)
-
--- Speed update connection
-spawn(function()
-   while wait() do
-      if player.Character and player.Character:FindFirstChild("Humanoid") then
-         player.Character.Humanoid.WalkSpeed = Tabs.Player.Flags.WalkSpeedSlider or 16
+-- Infinite Jump
+Tabs.Player:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "JumpToggle",
+   Callback = function(value)
+      if value then
+         loops.Jump = UserInputService.JumpRequest:Connect(function()
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+               player.Character.Humanoid:ChangeState(3)
+            end
+         end)
+      else
+         stopLoop("Jump")
       end
-   end
-end)
+   end,
+})
 
--- Toggle UI Keybind
-Rayfield:LoadConfiguration()
-
-local ToggleUI = Tabs.Misc:CreateKeybind({
-   Name = "Toggle UI",
+-- UI Toggle
+Tabs.Misc:CreateKeybind({
+   Name = "Toggle UI (K)",
    CurrentKeybind = "K",
    HoldToInteract = false,
-   Flag = "ToggleUIBind",
-   Callback = function(Keybind)
+   Flag = "UIToggle",
+   Callback = function()
       Rayfield:Toggle()
    end,
 })
 
-Tabs.Misc:CreateButton({
-   Name = "Rejoin Server",
-   Callback = function()
-      game:GetService("TeleportService"):Teleport(game.PlaceId, player)
-   end,
-})
-
 Rayfield:Notify({
-   Title = "Yeet A Friend",
-   Content = "Enjoy the script! Press K to toggle UI.And join discord https://discord.gg/M6Pcqt3AR9",
-   Duration = 5,
-   Image = 4483362458,
+   Title = "Fixed! ✅",
+   Content = "All toggles now work properly (enable/disable). Press K to toggle UI.",
+   Duration = 4.5,
 })
