@@ -11,7 +11,7 @@ local Window = Rayfield:CreateWindow({
       FileName = "YeetAFriendConfig"
    },
    Discord = {
-      Enabled = true
+      Enabled = true,
       Invite = "https://discord.gg/M6Pcqt3AR9", 
       RememberJoins = true
    },
