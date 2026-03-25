@@ -67,11 +67,11 @@ end
 local Buttons = {}
 
 if CoreGui:FindFirstChild("Haryas script ScreenGui") then
-	CoreGui["Solix ScreenGui"]:Destroy()
+	CoreGui["Haryas script ScreenGui"]:Destroy()
 end
 
 if CoreGui:FindFirstChild("Solix Notification") then
-	CoreGui["Solix Notification"]:Destroy()
+	CoreGui["Haryas script Notification"]:Destroy()
 end
 
 local config = {
@@ -139,13 +139,13 @@ end
 local DefaultFont = Enum.Font.GothamBold
 
 local function CustomFont()
-	local font_path = "solixhub/Assets/InterSemiBold.ttf"
+	local font_path = "Haryas script/Assets/InterSemiBold.ttf"
 
-	if not isfolder("solixhub") then
-		makefolder("solixhub")
+	if not isfolder("Haryas script") then
+		makefolder("Haryas script")
 	end
-	if not isfolder("solixhub/Assets") then
-		makefolder("solixhub/Assets")
+	if not isfolder("Haryas script/Assets") then
+		makefolder("Haryas script/Assets")
 	end
 
 	if not isfile(font_path) then
