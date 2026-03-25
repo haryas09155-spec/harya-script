@@ -70,7 +70,7 @@ if CoreGui:FindFirstChild("Haryas script ScreenGui") then
 	CoreGui["Haryas script ScreenGui"]:Destroy()
 end
 
-if CoreGui:FindFirstChild("Solix Notification") then
+if CoreGui:FindFirstChild("Haryas script Notification") then
 	CoreGui["Haryas script Notification"]:Destroy()
 end
 
@@ -165,7 +165,7 @@ local function CustomFont()
 	}
 
 	writefile("Haryas script/Assets/InterSemiBold.Font", HttpService:JSONEncode(font_data))
-	return Font.new(getcustomasset("solixhub/Assets/InterSemiBold.Font"))
+	return Font.new(getcustomasset("Haryas script/Assets/InterSemiBold.Font"))
 end
 
 local FontSuccess, LoadedFont = pcall(CustomFont)
