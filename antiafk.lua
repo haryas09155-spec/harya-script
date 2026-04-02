@@ -1,95 +1,177 @@
---// Services
+-- Services
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
-local CoreGui = gethui and gethui() or game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
 
---// Anti AFK
-player.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-end)
+-- Variables
+local Player = Players.LocalPlayer
+local StartTime = tick()
 
---// GUI (WORKS ON BOTH)
-local gui = Instance.new("ScreenGui")
-gui.Parent = player:WaitForChild("PlayerGui")
-gui.ResetOnSpawn = false
+-- Create GUI
+local AntiAFKGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local UIStroke = Instance.new("UIStroke")
+local Title = Instance.new("TextLabel")
+local StatusDot = Instance.new("Frame")
+local DotCorner = Instance.new("UICorner")
+local CloseButton = Instance.new("TextButton")
+local Divider1 = Instance.new("Frame")
+local Divider2 = Instance.new("Frame")
+local Footer = Instance.new("TextLabel")
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 320, 0, 150)
-frame.Position = UDim2.new(0.5, -160, 0.2, 0)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-frame.BorderSizePixel = 0
+-- Metrics Labels
+local PingLabel = Instance.new("TextLabel")
+local FPSLabel = Instance.new("TextLabel")
+local TimeLabel = Instance.new("TextLabel")
+local PingValue = Instance.new("TextLabel")
+local FPSValue = Instance.new("TextLabel")
+local TimeValue = Instance.new("TextLabel")
 
-local corner = Instance.new("UICorner", frame)
-corner.CornerRadius = UDim.new(0, 12)
+-- GUI Properties
+AntiAFKGui.Name = "AntiAFK_UI"
+AntiAFKGui.Parent = CoreGui
+AntiAFKGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Title
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, -40, 0, 30)
-title.Position = UDim2.new(0, 10, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "● Anti-AFK"
-title.TextColor3 = Color3.fromRGB(0,255,0)
-title.Font = Enum.Font.GothamBold
-title.TextScaled = true
-title.TextXAlignment = Enum.TextXAlignment.Left
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = AntiAFKGui
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = UDim2.new(0, 350, 0, 180)
+MainFrame.Active = true
+MainFrame.Draggable = true
 
--- Close Button
-local close = Instance.new("TextButton", frame)
-close.Size = UDim2.new(0, 30, 0, 30)
-close.Position = UDim2.new(1, -35, 0, 0)
-close.Text = "X"
-close.BackgroundTransparency = 1
-close.TextColor3 = Color3.new(1,1,1)
-close.Font = Enum.Font.GothamBold
-close.TextScaled = true
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
 
-close.MouseButton1Click:Connect(function()
-    gui:Destroy()
-end)
+UIStroke.Color = Color3.fromRGB(40, 40, 40)
+UIStroke.Thickness = 1
+UIStroke.Parent = MainFrame
 
--- Create stat labels
-local function createStat(x, name)
-    local lbl = Instance.new("TextLabel", frame)
-    lbl.Size = UDim2.new(0.33, 0, 0, 90)
-    lbl.Position = UDim2.new(x, 0, 0.35, 0)
+StatusDot.Name = "StatusDot"
+StatusDot.Parent = MainFrame
+StatusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+StatusDot.Position = UDim2.new(0, 15, 0, 18)
+StatusDot.Size = UDim2.new(0, 8, 0, 8)
+
+DotCorner.CornerRadius = UDim.new(1, 0)
+DotCorner.Parent = StatusDot
+
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 32, 0, 10)
+Title.Size = UDim2.new(0, 200, 0, 25)
+Title.Font = Enum.Font.SourceSans
+Title.Text = "Anti-AFK · by hassanxzayn"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = MainFrame
+CloseButton.BackgroundTransparency = 1
+CloseButton.Position = UDim2.new(1, -30, 0, 10)
+CloseButton.Size = UDim2.new(0, 20, 0, 20)
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+CloseButton.TextSize = 20
+
+Divider1.Name = "Divider"
+Divider1.Parent = MainFrame
+Divider1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Divider1.BorderSizePixel = 0
+Divider1.Position = UDim2.new(0, 15, 0, 45)
+Divider1.Size = UDim2.new(1, -30, 0, 1)
+
+-- Layout for Stats
+local function CreateStat(name, pos, valueName)
+    local lbl = Instance.new("TextLabel")
+    lbl.Name = name
+    lbl.Parent = MainFrame
     lbl.BackgroundTransparency = 1
-    lbl.TextColor3 = Color3.new(1,1,1)
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextScaled = true
-    lbl.Text = name.."\n0"
-    return lbl
+    lbl.Position = UDim2.new(0, pos, 0, 60)
+    lbl.Size = UDim2.new(0, 60, 0, 20)
+    lbl.Font = Enum.Font.SourceSans
+    lbl.Text = name:upper()
+    lbl.TextColor3 = Color3.fromRGB(150, 150, 150)
+    lbl.TextSize = 14
+    
+    local val = Instance.new("TextLabel")
+    val.Name = valueName
+    val.Parent = MainFrame
+    val.BackgroundTransparency = 1
+    val.Position = UDim2.new(0, pos, 0, 90)
+    val.Size = UDim2.new(0, 60, 0, 30)
+    val.Font = Enum.Font.SourceSansBold
+    val.Text = "0"
+    val.TextColor3 = Color3.fromRGB(255, 255, 255)
+    val.TextSize = 22
+    val.TextXAlignment = Enum.TextXAlignment.Left
+    return val
 end
 
-local pingLabel = createStat(0, "PING")
-local fpsLabel = createStat(0.33, "FPS")
-local timeLabel = createStat(0.66, "TIME")
+PingValue = CreateStat("Ping", 20, "PingValue")
+FPSValue = CreateStat("FPS", 145, "FPSValue")
+TimeValue = CreateStat("Time", 255, "TimeValue")
 
--- FPS
-local fps = 0
-local last = tick()
+Divider2.Name = "Divider"
+Divider2.Parent = MainFrame
+Divider2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Divider2.BorderSizePixel = 0
+Divider2.Position = UDim2.new(0, 15, 0, 140)
+Divider2.Size = UDim2.new(1, -30, 0, 1)
+
+Footer.Name = "Footer"
+Footer.Parent = MainFrame
+Footer.BackgroundTransparency = 1
+Footer.Position = UDim2.new(0, 15, 0, 150)
+Footer.Size = UDim2.new(0, 200, 0, 20)
+Footer.Font = Enum.Font.SourceSans
+Footer.Text = "Haryas script"
+Footer.TextColor3 = Color3.fromRGB(180, 180, 180)
+Footer.TextSize = 16
+Footer.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Functionality
+CloseButton.MouseButton1Click:Connect(function()
+    AntiAFKGui:Destroy()
+end)
+
+-- Anti-AFK Logic
+Player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+-- Update Stats
+local FrameCount = 0
+local LastUpdate = tick()
 
 RunService.RenderStepped:Connect(function()
-    fps = math.floor(1 / (tick() - last))
-    last = tick()
+    FrameCount = FrameCount + 1
+    local now = tick()
+    
+    -- Update FPS every second
+    if now - LastUpdate >= 1 then
+        FPSValue.Text = tostring(FrameCount)
+        FrameCount = 0
+        LastUpdate = now
+    end
+    
+    -- Update Ping
+    local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+    PingValue.Text = tostring(ping)
+    
+    -- Update Time
+    local duration = math.floor(now - StartTime)
+    local hours = math.floor(duration / 3600)
+    local mins = math.floor((duration % 3600) / 60)
+    local secs = duration % 60
+    TimeValue.Text = string.format("%d:%d:%d", hours, mins, secs)
 end)
-
--- Time
-local startTime = tick()
-
--- Update loop
-while task.wait(1) do
-    local ping = 0
-
-    -- Safe ping (works PC, may fail mobile)
-    pcall(function()
-        ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-    end)
-
-    pingLabel.Text = "PING\n"..ping
-    fpsLabel.Text = "FPS\n"..fps
-    timeLabel.Text = "TIME\n"..math.floor(tick() - startTime)
-end
