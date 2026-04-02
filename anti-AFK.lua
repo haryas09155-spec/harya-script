@@ -1,13 +1,10 @@
+--// Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
-
---// Seed randomness
-math.randomseed(os.time())
 
 --// CONFIG
 local CONFIG = {
@@ -21,7 +18,7 @@ local CONFIG = {
 
 --// STATE
 local enabled = false
-local connections = {}
+local activeThreads = {}
 
 --// UTILS
 local function randomRange(min, max)
@@ -34,14 +31,24 @@ end
 
 --// METHODS
 
--- 1. Idle bypass (MOST IMPORTANT)
+-- 1. Idle bypass (Bypasses the built-in 20-minute kick)
 local function antiIdle()
-    for _,v in pairs(getconnections(player.Idled)) do
-        v:Disable()
+    -- Standard Method: Disabling the Idled connection
+    if getconnections then
+        for _, v in pairs(getconnections(player.Idled)) do
+            if v.Disable then v:Disable() elseif v.Disconnect then v:Disconnect() end
+        end
+    else
+        -- Fallback: Overwrite the Idled signal logic if getconnections isn't available
+        player.Idled:Connect(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+            task.wait(0.1)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
+        end)
     end
 end
 
--- 2. Mouse movement (PC)
+-- 2. Mouse movement
 local function moveMouse()
     local dx = math.random(-CONFIG.DELTA, CONFIG.DELTA)
     local dy = math.random(-CONFIG.DELTA, CONFIG.DELTA)
@@ -50,7 +57,7 @@ local function moveMouse()
     end)
 end
 
--- 3. Key press (PC)
+-- 3. Key press
 local function pressKey()
     local key = Enum.KeyCode[randomKey()]
     pcall(function()
@@ -60,97 +67,70 @@ local function pressKey()
     end)
 end
 
--- 4. Camera movement (works on ALL devices)
+-- 4. Camera movement
 local function moveCamera()
     if camera then
         local current = camera.CFrame
-        local offset = CFrame.Angles(
-            math.rad(math.random(-2,2)),
-            math.rad(math.random(-2,2)),
-            0
-        )
+        local offset = CFrame.Angles(0, math.rad(math.random(-2,2)), 0)
         camera.CFrame = current * offset
     end
 end
 
--- 5. Touch simulation (Mobile)
+-- 5. Touch simulation
 local function simulateTouch()
     if UserInputService.TouchEnabled then
         pcall(function()
-            VirtualInputManager:SendTouchEvent(
-                0,
-                Vector2.new(math.random(100,300), math.random(100,300)),
-                true,
-                game
-            )
+            local pos = Vector2.new(math.random(100,300), math.random(100,300))
+            VirtualInputManager:SendTouchEvent(0, pos, true, game)
             task.wait(0.1)
-            VirtualInputManager:SendTouchEvent(
-                0,
-                Vector2.new(math.random(100,300), math.random(100,300)),
-                false,
-                game
-            )
+            VirtualInputManager:SendTouchEvent(0, pos, false, game)
         end)
     end
 end
 
---// LOOP SYSTEM (modular timers)
-local function startLoops()
-
-    -- Mouse loop
-    table.insert(connections, task.spawn(function()
-        while enabled do
-            moveMouse()
-            task.wait(randomRange(CONFIG.MOUSE_INTERVAL[1], CONFIG.MOUSE_INTERVAL[2]))
-        end
-    end))
-
-    -- Key loop
-    table.insert(connections, task.spawn(function()
-        while enabled do
-            pressKey()
-            task.wait(randomRange(CONFIG.KEY_INTERVAL[1], CONFIG.KEY_INTERVAL[2]))
-        end
-    end))
-
-    -- Camera loop
-    table.insert(connections, task.spawn(function()
-        while enabled do
-            moveCamera()
-            task.wait(randomRange(CONFIG.CAMERA_INTERVAL[1], CONFIG.CAMERA_INTERVAL[2]))
-        end
-    end))
-
-    -- Touch loop (mobile)
-    table.insert(connections, task.spawn(function()
-        while enabled do
-            simulateTouch()
-            task.wait(randomRange(CONFIG.TOUCH_INTERVAL[1], CONFIG.TOUCH_INTERVAL[2]))
-        end
-    end))
-
-end
-
+--// LOOP SYSTEM
 local function stopLoops()
     enabled = false
+    for _, thread in ipairs(activeThreads) do
+        task.cancel(thread)
+    end
+    table.clear(activeThreads)
+end
+
+local function startLoops()
+    stopLoops() -- Clear any existing loops first
+    enabled = true
+
+    local function runLoop(func, interval)
+        table.insert(activeThreads, task.spawn(function()
+            while enabled do
+                func()
+                task.wait(randomRange(interval[1], interval[2]))
+            end
+        end))
+    end
+
+    runLoop(moveMouse, CONFIG.MOUSE_INTERVAL)
+    runLoop(pressKey, CONFIG.KEY_INTERVAL)
+    runLoop(moveCamera, CONFIG.CAMERA_INTERVAL)
+    runLoop(simulateTouch, CONFIG.TOUCH_INTERVAL)
 end
 
 --// TOGGLE
 local function setEnabled(state)
-    enabled = state
-
     if state then
         antiIdle()
         startLoops()
-        print("✅ Anti-AFK ENABLED (Advanced)")
+        print("✅ Anti-AFK ENABLED")
     else
         stopLoops()
         print("❌ Anti-AFK DISABLED")
     end
 end
 
---// SIMPLE UI (lightweight & mobile-friendly)
+--// UI
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "AntiAFK_UI"
 gui.ResetOnSpawn = false
 
 local btn = Instance.new("TextButton", gui)
@@ -161,16 +141,14 @@ btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 btn.TextColor3 = Color3.new(1,1,1)
 btn.TextScaled = true
 
+-- Rounded Corners
+local corner = Instance.new("UICorner", btn)
+corner.CornerRadius = ToolUnit.new(0, 8)
+
 btn.MouseButton1Click:Connect(function()
-    setEnabled(not enabled)
-
-    if enabled then
-        btn.Text = "Anti-AFK: ON"
-        btn.BackgroundColor3 = Color3.fromRGB(50, 200, 80)
-    else
-        btn.Text = "Anti-AFK: OFF"
-        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    end
+    local newState = not enabled
+    setEnabled(newState)
+    
+    btn.Text = newState and "Anti-AFK: ON" or "Anti-AFK: OFF"
+    btn.BackgroundColor3 = newState and Color3.fromRGB(50, 200, 80) or Color3.fromRGB(200, 50, 50)
 end)
-
-print("🔥 Advanced Anti-AFK Loaded (PC + Mobile + Bypass)")
