@@ -13,46 +13,63 @@ player.Idled:Connect(function()
     VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
---// GUI
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "AntiAFK_GUI"
+--// GUI (WORKS ON BOTH)
+local gui = Instance.new("ScreenGui")
+gui.Parent = player:WaitForChild("PlayerGui")
+gui.ResetOnSpawn = false
 
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 400, 0, 180)
-Frame.Position = UDim2.new(0.5, -200, 0.2, 0)
-Frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-Frame.BorderSizePixel = 0
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 320, 0, 150)
+frame.Position = UDim2.new(0.5, -160, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.BorderSizePixel = 0
 
-local UICorner = Instance.new("UICorner", Frame)
-UICorner.CornerRadius = UDim.new(0, 12)
+local corner = Instance.new("UICorner", frame)
+corner.CornerRadius = UDim.new(0, 12)
 
 -- Title
-local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundTransparency = 1
-Title.Text = "● Anti-AFK"
-Title.TextColor3 = Color3.fromRGB(200,200,200)
-Title.Font = Enum.Font.Gotham
-Title.TextSize = 18
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, -40, 0, 30)
+title.Position = UDim2.new(0, 10, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "● Anti-AFK"
+title.TextColor3 = Color3.fromRGB(0,255,0)
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Stats Labels
-local PingLabel = Instance.new("TextLabel", Frame)
-local FPSLabel = Instance.new("TextLabel", Frame)
-local TimeLabel = Instance.new("TextLabel", Frame)
+-- Close Button
+local close = Instance.new("TextButton", frame)
+close.Size = UDim2.new(0, 30, 0, 30)
+close.Position = UDim2.new(1, -35, 0, 0)
+close.Text = "X"
+close.BackgroundTransparency = 1
+close.TextColor3 = Color3.new(1,1,1)
+close.Font = Enum.Font.GothamBold
+close.TextScaled = true
 
-local labels = {PingLabel, FPSLabel, TimeLabel}
-local names = {"PING", "FPS", "TIME"}
+close.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
 
-for i, lbl in ipairs(labels) do
-    lbl.Size = UDim2.new(0.33, 0, 0, 80)
-    lbl.Position = UDim2.new((i-1)*0.33, 0, 0.4, 0)
+-- Create stat labels
+local function createStat(x, name)
+    local lbl = Instance.new("TextLabel", frame)
+    lbl.Size = UDim2.new(0.33, 0, 0, 90)
+    lbl.Position = UDim2.new(x, 0, 0.35, 0)
     lbl.BackgroundTransparency = 1
     lbl.TextColor3 = Color3.new(1,1,1)
     lbl.Font = Enum.Font.GothamBold
     lbl.TextScaled = true
+    lbl.Text = name.."\n0"
+    return lbl
 end
 
---// FPS Counter
+local pingLabel = createStat(0, "PING")
+local fpsLabel = createStat(0.33, "FPS")
+local timeLabel = createStat(0.66, "TIME")
+
+-- FPS
 local fps = 0
 local last = tick()
 
@@ -61,16 +78,19 @@ RunService.RenderStepped:Connect(function()
     last = tick()
 end)
 
---// Time Counter
+-- Time
 local startTime = tick()
 
---// Update Loop
-while true do
-    local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+-- Update loop
+while task.wait(1) do
+    local ping = 0
 
-    PingLabel.Text = "PING\n"..ping
-    FPSLabel.Text = "FPS\n"..fps
-    TimeLabel.Text = "TIME\n"..math.floor(tick() - startTime)
+    -- Safe ping (works PC, may fail mobile)
+    pcall(function()
+        ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+    end)
 
-    task.wait(1)
+    pingLabel.Text = "PING\n"..ping
+    fpsLabel.Text = "FPS\n"..fps
+    timeLabel.Text = "TIME\n"..math.floor(tick() - startTime)
 end
