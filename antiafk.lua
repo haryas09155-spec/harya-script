@@ -1,10 +1,9 @@
 --// Services
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Stats = game:GetService("Stats")
-local VirtualUser = game:GetService("VirtualUser")
-
-local player = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local CoreGui = gethui and gethui() or game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
 
 --// Anti AFK
 player.Idled:Connect(function()
