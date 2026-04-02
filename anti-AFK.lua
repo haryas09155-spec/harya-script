@@ -1,217 +1,176 @@
---loadstring(game:HttpGet("https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/anti-AFK.lua))()
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local mouse = player:GetMouse()
+local camera = workspace.CurrentCamera
 
--- Configuration
+--// Seed randomness
+math.randomseed(os.time())
+
+--// CONFIG
 local CONFIG = {
-    MOUSE_MOVE_INTERVAL = 10,
-    KEY_PRESS_INTERVAL = 30,
-    MOUSE_DELTA = 2,
-    KEYS_TO_PRESS = {"w", "a", "s", "d"}
+    MOUSE_INTERVAL = {8, 15},
+    KEY_INTERVAL = {20, 40},
+    CAMERA_INTERVAL = {10, 25},
+    TOUCH_INTERVAL = {15, 35},
+    DELTA = 3,
+    KEYS = {"W","A","S","D"},
 }
 
--- State
+--// STATE
 local enabled = false
-local lastMouseMove = 0
-local lastKeyPress = 0
-local connection
-local dragging = false
-local dragStart = nil
-local startPos = nil
+local connections = {}
 
--- Anti-AFK Functions (same as before)
-local function randomDelay(min, max)
-    return math.random(min * 100, max * 100) / 100
+--// UTILS
+local function randomRange(min, max)
+    return math.random() * (max - min) + min
 end
 
-local function subtleMouseMove()
-    local deltaX = math.random(-CONFIG.MOUSE_DELTA, CONFIG.MOUSE_DELTA)
-    local deltaY = math.random(-CONFIG.MOUSE_DELTA, CONFIG.MOUSE_DELTA)
-    VirtualInputManager:SendMouseDelta(deltaX, deltaY, 0, "Default")
+local function randomKey()
+    return CONFIG.KEYS[math.random(1, #CONFIG.KEYS)]
 end
 
-local function pressRandomKey()
-    local key = CONFIG.KEYS_TO_PRESS[math.random(1, #CONFIG.KEYS_TO_PRESS)]
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key:upper()], false, game)
-    wait(0.05)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key:upper()], false, game)
-end
+--// METHODS
 
-local function antiAFKLoop()
-    if not enabled then return end
-    local now = tick()
-    
-    if now - lastMouseMove >= CONFIG.MOUSE_MOVE_INTERVAL then
-        subtleMouseMove()
-        lastMouseMove = now
-    end
-    
-    if now - lastKeyPress >= CONFIG.KEY_PRESS_INTERVAL then
-        pressRandomKey()
-        lastKeyPress = now
+-- 1. Idle bypass (MOST IMPORTANT)
+local function antiIdle()
+    for _,v in pairs(getconnections(player.Idled)) do
+        v:Disable()
     end
 end
 
--- UI Creation
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local TitleBar = Instance.new("Frame")
-local TitleLabel = Instance.new("TextLabel")
-local ToggleButton = Instance.new("TextButton")
-local StatusLabel = Instance.new("TextLabel")
+-- 2. Mouse movement (PC)
+local function moveMouse()
+    local dx = math.random(-CONFIG.DELTA, CONFIG.DELTA)
+    local dy = math.random(-CONFIG.DELTA, CONFIG.DELTA)
+    pcall(function()
+        VirtualInputManager:SendMouseDelta(dx, dy)
+    end)
+end
 
-ScreenGui.Name = "AntiAFK_UI"
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
-ScreenGui.ResetOnSpawn = false
+-- 3. Key press (PC)
+local function pressKey()
+    local key = Enum.KeyCode[randomKey()]
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+    end)
+end
 
--- Main Frame
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0, 10, 0, 10)
-MainFrame.Size = UDim2.new(0, 220, 0, 80)
-MainFrame.Active = true
-MainFrame.Draggable = false
-
--- Corner rounding
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 8)
-MainCorner.Parent = MainFrame
-
-local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(65, 65, 75)
-MainStroke.Thickness = 1
-MainStroke.Parent = MainFrame
-
--- Title Bar
-TitleBar.Name = "TitleBar"
-TitleBar.Parent = MainFrame
-TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-TitleBar.BorderSizePixel = 0
-TitleBar.Size = UDim2.new(1, 0, 0, 30)
-TitleBar.Active = true
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 8)
-TitleCorner.Parent = TitleBar
-
-local TitleStroke = Instance.new("UIStroke")
-TitleStroke.Color = Color3.fromRGB(50, 50, 60)
-TitleStroke.Thickness = 1
-TitleStroke.Parent = TitleBar
-
-TitleLabel.Name = "TitleLabel"
-TitleLabel.Parent = TitleBar
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Position = UDim2.new(0, 10, 0, 0)
-TitleLabel.Size = UDim2.new(1, -20, 1, 0)
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "Anti-AFK"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.TextSize = 14
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Toggle Button
-ToggleButton.Name = "ToggleButton"
-ToggleButton.Parent = MainFrame
-ToggleButton.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
-ToggleButton.BorderSizePixel = 0
-ToggleButton.Position = UDim2.new(0, 15, 0, 45)
-ToggleButton.Size = UDim2.new(0, 80, 0, 30)
-ToggleButton.Font = Enum.Font.GothamBold
-ToggleButton.Text = "OFF"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 12
-
-local ToggleCorner = Instance.new("UICorner")
-ToggleCorner.CornerRadius = UDim.new(0, 6)
-ToggleCorner.Parent = ToggleButton
-
-local ToggleStroke = Instance.new("UIStroke")
-ToggleStroke.Color = Color3.fromRGB(180, 40, 55)
-ToggleStroke.Thickness = 1
-ToggleStroke.Parent = ToggleButton
-
--- Status Label
-StatusLabel.Name = "StatusLabel"
-StatusLabel.Parent = MainFrame
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Position = UDim2.new(0, 105, 0, 45)
-StatusLabel.Size = UDim2.new(1, -120, 0, 30)
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Text = "Mouse: 10s | Keys: 30s"
-StatusLabel.TextColor3 = Color3.fromRGB(160, 160, 170)
-StatusLabel.TextSize = 11
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Dragging Logic
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
+-- 4. Camera movement (works on ALL devices)
+local function moveCamera()
+    if camera then
+        local current = camera.CFrame
+        local offset = CFrame.Angles(
+            math.rad(math.random(-2,2)),
+            math.rad(math.random(-2,2)),
+            0
+        )
+        camera.CFrame = current * offset
     end
-end)
+end
 
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+-- 5. Touch simulation (Mobile)
+local function simulateTouch()
+    if UserInputService.TouchEnabled then
+        pcall(function()
+            VirtualInputManager:SendTouchEvent(
+                0,
+                Vector2.new(math.random(100,300), math.random(100,300)),
+                true,
+                game
+            )
+            task.wait(0.1)
+            VirtualInputManager:SendTouchEvent(
+                0,
+                Vector2.new(math.random(100,300), math.random(100,300)),
+                false,
+                game
+            )
+        end)
     end
-end)
+end
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
+--// LOOP SYSTEM (modular timers)
+local function startLoops()
 
--- Toggle Function
+    -- Mouse loop
+    table.insert(connections, task.spawn(function()
+        while enabled do
+            moveMouse()
+            task.wait(randomRange(CONFIG.MOUSE_INTERVAL[1], CONFIG.MOUSE_INTERVAL[2]))
+        end
+    end))
+
+    -- Key loop
+    table.insert(connections, task.spawn(function()
+        while enabled do
+            pressKey()
+            task.wait(randomRange(CONFIG.KEY_INTERVAL[1], CONFIG.KEY_INTERVAL[2]))
+        end
+    end))
+
+    -- Camera loop
+    table.insert(connections, task.spawn(function()
+        while enabled do
+            moveCamera()
+            task.wait(randomRange(CONFIG.CAMERA_INTERVAL[1], CONFIG.CAMERA_INTERVAL[2]))
+        end
+    end))
+
+    -- Touch loop (mobile)
+    table.insert(connections, task.spawn(function()
+        while enabled do
+            simulateTouch()
+            task.wait(randomRange(CONFIG.TOUCH_INTERVAL[1], CONFIG.TOUCH_INTERVAL[2]))
+        end
+    end))
+
+end
+
+local function stopLoops()
+    enabled = false
+end
+
+--// TOGGLE
 local function setEnabled(state)
     enabled = state
+
     if state then
-        connection = RunService.Heartbeat:Connect(antiAFKLoop)
-        ToggleButton.Text = "ON"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 167, 69)
-        ToggleStroke.Color = Color3.fromRGB(35, 140, 60)
-        StatusLabel.TextColor3 = Color3.fromRGB(100, 200, 100)
+        antiIdle()
+        startLoops()
+        print("✅ Anti-AFK ENABLED (Advanced)")
     else
-        if connection then
-            connection:Disconnect()
-            connection = nil
-        end
-        ToggleButton.Text = "OFF"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
-        ToggleStroke.Color = Color3.fromRGB(180, 40, 55)
-        StatusLabel.TextColor3 = Color3.fromRGB(220, 80, 80)
+        stopLoops()
+        print("❌ Anti-AFK DISABLED")
     end
 end
 
-ToggleButton.MouseButton1Click:Connect(function()
-    setEnabled(not enabled)
-end)
+--// SIMPLE UI (lightweight & mobile-friendly)
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.ResetOnSpawn = false
 
--- Hover Effects
-ToggleButton.MouseEnter:Connect(function()
+local btn = Instance.new("TextButton", gui)
+btn.Size = UDim2.new(0, 140, 0, 50)
+btn.Position = UDim2.new(0, 20, 0, 20)
+btn.Text = "Anti-AFK: OFF"
+btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+btn.TextColor3 = Color3.new(1,1,1)
+btn.TextScaled = true
+
+btn.MouseButton1Click:Connect(function()
+    setEnabled(not enabled)
+
     if enabled then
-        TweenService:Create(ToggleButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 84, 0, 32)}):Play()
+        btn.Text = "Anti-AFK: ON"
+        btn.BackgroundColor3 = Color3.fromRGB(50, 200, 80)
     else
-        TweenService:Create(ToggleButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 84, 0, 32)}):Play()
+        btn.Text = "Anti-AFK: OFF"
+        btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     end
 end)
 
-ToggleButton.MouseLeave:Connect(function()
-    TweenService:Create(ToggleButton, TweenInfo.new(0.2), {Size = UDim2.new(0, 80, 0, 30)}):Play()
-end)
-
--- Initialize OFF
-setEnabled(false)
-
-print("Anti-AFK UI loaded! Drag by title bar, click toggle button.")
+print("🔥 Advanced Anti-AFK Loaded (PC + Mobile + Bypass)")
