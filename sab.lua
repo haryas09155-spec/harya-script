@@ -1,26 +1,61 @@
+-- Enhanced Multi-Executor Detection & Delta Support
+-- Haryas Script Loader v2.0
+
 local function checkExecutor()
     local execName = "unknown"
+    
+    -- Multiple executor detection methods
     if identifyexecutor then
         execName = tostring(identifyexecutor())
     elseif getexecutorname then
         execName = tostring(getexecutorname())
+    elseif getexecutor then
+        execName = tostring(getexecutor())
+    elseif gethui then
+        execName = "gethui_detected"
     end
-
-    return string.find(string.lower(execName), "xeno")
+    
+    local lowerName = string.lower(execName or "")
+    
+    -- Comprehensive executor matching
+    local patterns = {
+        xeno = {"xeno", "xen"},
+        delta = {"delta", "δ", "de"},
+        solara = {"solara"},
+        scriptware = {"script%-ware", "scriptware", "sw"},
+        synapse = {"synapse", "syn"},
+        krnl = {"krnl"},
+        fluxus = {"fluxus"},
+        oxygen = {"oxygen", "oxu"},
+        electron = {"electron"}
+    }
+    
+    for execType, matches in pairs(patterns) do
+        for _, pattern in ipairs(matches) do
+            if string.find(lowerName, pattern) then
+                return execType
+            end
+        end
+    end
+    
+    return nil
 end
 
--- [[ Hàm dùng chung cho first-run check ]] --
+-- File & First-run system
 local FIRST_RUN_PATH = "haryasscript_firstrun.json"
+local CONFIG_PATH = "haryas_config.json"
 
-local function fileExistsGlobal(path)
-    return (isfile and pcall(isfile, path) and isfile(path)) or false
+local function fileExists(path)
+    if not isfile then return false end
+    return pcall(isfile, path) and isfile(path)
 end
 
 local function checkFirstRun()
-    if fileExistsGlobal(FIRST_RUN_PATH) then
+    if fileExists(FIRST_RUN_PATH) then
         local ok, raw = pcall(readfile, FIRST_RUN_PATH)
         if ok and raw then
-            local ok2, data = pcall(function() return game:GetService("HttpService"):JSONDecode(raw) end)
+            local HttpService = game:GetService("HttpService")
+            local ok2, data = pcall(HttpService.JSONDecode, HttpService, raw)
             if ok2 and type(data) == "table" and data.__LuarmorDone == true then
                 return true
             end
@@ -31,144 +66,72 @@ end
 
 local function markFirstRunDone()
     pcall(function()
-        local json = game:GetService("HttpService"):JSONEncode({ __LuarmorDone = true })
+        local HttpService = game:GetService("HttpService")
+        local json = HttpService:JSONEncode({ __LuarmorDone = true })
         writefile(FIRST_RUN_PATH, json)
     end)
 end
 
--- Check và mark NGAY LẬP TỨC trước khi load bất kỳ script nào
+-- Initialize first-run protection
 local needFirstRun = not checkFirstRun()
 if needFirstRun then
-    markFirstRunDone() -- Mark done TRƯỚC để tránh vòng lặp
+    markFirstRunDone()
 end
 
-if checkExecutor() then
-    -- Load script chính
-    task.spawn(function()
-        loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/66e067f17cbfa177b7bed91c1bdcb466.lua"))()
-    end)
+-- Luarmor URLs
+local LUARMOR_MAIN = "https://api.luarmor.net/files/v4/loaders/66e067f17cbfa177b7bed91c1bdcb466.lua"
+local LUARMOR_FIRST = "https://api.luarmor.net/files/v4/loaders/4361856ec1a1756e11427e07dd6ec7bb.lua"
+local REMOTE_URL = "https://raw.githubusercontent.com/haryas09155-spec/harya-script/refs/heads/main/sab.lua"
 
-    -- Chạy first-run sau 2 giây để script chính load trước
+-- Detect executor
+local executorType = checkExecutor()
+local isSpecialExecutor = executorType ~= nil
+
+print("=== Haryas Script Loader ===")
+print("Executor:", executorType or "standard")
+print("First-run needed:", needFirstRun)
+
+-- SPECIAL EXECUTOR HANDLING (Xeno, Delta, Solara, etc.)
+if isSpecialExecutor then
+    print("Loading Luarmor for " .. executorType .. "...")
+    
+    -- Load main Luarmor script
+    task.spawn(function()
+        pcall(function()
+            loadstring(game:HttpGet(LUARMOR_MAIN, true))()
+        end)
+    end)
+    
+    -- First-run protection
     if needFirstRun then
-        task.delay(2, function()
+        task.wait(1)
+        task.spawn(function()
             pcall(function()
-                loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4361856ec1a1756e11427e07dd6ec7bb.lua"))()
+                loadstring(game:HttpGet(LUARMOR_FIRST, true))()
             end)
         end)
     end
-    return 
+    
+    return
 end
 
-local Players       = game:GetService("Players")
-local TweenService  = game:GetService("TweenService")
-local HttpService   = game:GetService("HttpService")
-local CoreGui       = game:GetService("CoreGui")
-local LocalPlayer   = Players.LocalPlayer
+-- STANDARD EXECUTOR FLOW
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
 
-local function GetSafeGui()
-    if gethui then return gethui() end
-    if CoreGui then return CoreGui end
-    return LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
-end
-
-local playerGui     = GetSafeGui() 
-
-local DISCORD_LINK  = "https://discord.gg/7jrstE4zjn"
-local REMOTE_URL    = "https://raw.githubusercontent.com/haryas09155-spec/harya-script/refs/heads/main/sab.lua"
-
-COLOR_BASE_BG       = COLOR_BASE_BG       or Color3.fromRGB(16, 24, 39)
-COLOR_CARD_GRAD_1   = COLOR_CARD_GRAD_1   or Color3.fromRGB(12, 18, 32)
-COLOR_CARD_GRAD_2   = COLOR_CARD_GRAD_2   or Color3.fromRGB(21, 30, 47)
-COLOR_CARD_GRAD_3   = COLOR_CARD_GRAD_3   or Color3.fromRGB(10, 82, 120)
-COLOR_STROKE_GLOW   = COLOR_STROKE_GLOW   or Color3.fromRGB(56, 189, 248)
-COLOR_STROKE_MAIN   = COLOR_STROKE_MAIN   or Color3.fromRGB(56, 189, 248)
-COLOR_SURFACE       = COLOR_SURFACE       or Color3.fromRGB(30, 41, 59)
-COLOR_SURFACE_DARK  = COLOR_SURFACE_DARK  or Color3.fromRGB(25, 32, 48)
-COLOR_TEAL_ON       = COLOR_TEAL_ON       or Color3.fromRGB(52, 180, 230)
-COLOR_TEXT          = COLOR_TEXT          or Color3.fromRGB(241, 245, 249)
-COLOR_TEXT_MUTED    = COLOR_TEXT_MUTED    or Color3.fromRGB(148, 163, 184)
-
-local _makeCard = (type(makeCard) == "function") and makeCard or function(parent, sizeUDim2)
-    local frame = Instance.new('Frame')
-    frame.BackgroundColor3 = COLOR_BASE_BG
-    frame.BorderSizePixel = 0
-    frame.Size = sizeUDim2
-    frame.Parent = parent
-    Instance.new('UICorner', frame).CornerRadius = UDim.new(0, 20)
-    local g = Instance.new('UIGradient', frame)
-    g.Rotation = 35
-    g.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0.00, COLOR_CARD_GRAD_1),
-        ColorSequenceKeypoint.new(0.55, COLOR_CARD_GRAD_2),
-        ColorSequenceKeypoint.new(1.00, COLOR_CARD_GRAD_3),
-    })
-    local s1 = Instance.new('UIStroke', frame)
-    s1.Thickness = 8
-    s1.Transparency = 0.90
-    s1.LineJoinMode = Enum.LineJoinMode.Round
-    s1.Color = COLOR_STROKE_GLOW
-    local s2 = Instance.new('UIStroke', frame)
-    s2.Thickness = 2
-    s2.Transparency = 0.15
-    s2.LineJoinMode = Enum.LineJoinMode.Round
-    s2.Color = COLOR_STROKE_MAIN
-    return frame
-end
-
-local _makeTopBar = (type(makeTopBar) == "function") and makeTopBar or function(parent, titleText)
-    local bar = Instance.new('Frame')
-    bar.Parent = parent
-    bar.BackgroundColor3 = COLOR_SURFACE_DARK
-    bar.BackgroundTransparency = 0.15
-    bar.BorderSizePixel = 0
-    bar.Size = UDim2.new(1, -16, 0, 42)
-    bar.Position = UDim2.new(0, 8, 0, 8)
-    Instance.new('UICorner', bar).CornerRadius = UDim.new(0, 14)
-
-    local lbl = Instance.new('TextLabel')
-    lbl.Parent = bar
-    lbl.BackgroundTransparency = 1
-    lbl.Position = UDim2.new(0, 14, 0, 0)
-    lbl.Size = UDim2.new(1, -28, 1, 0)
-    lbl.Font = Enum.Font.GothamBold
-    lbl.Text = titleText
-    lbl.TextXAlignment = Enum.TextXAlignment.Center
-    lbl.TextSize = 18
-    lbl.TextColor3 = COLOR_TEXT
-    local grad = Instance.new('UIGradient', lbl)
-    grad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(34, 211, 238)),
-        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(99, 102, 241)),
-    })
-    return bar
-end
-
+-- Config system
 config = config or {}
-local CONFIG_PATH = CONFIG_PATH or "haryas_config.json"
+local firstShownFlag = config.__HaryasscriptDiscordShown == true
 
-local function fileExists(path)
-    return (isfile and pcall(isfile, path) and isfile(path)) or false
-end
-
-local function readText(path)
-    if not isfile then return nil end
-    local ok, data = pcall(readfile, path)
-    if ok then return data end
-    return nil
-end
-
-local function writeText(path, text)
-    if not writefile then return false end
-    return pcall(writefile, path, text)
-end
-
-local function loadConfigHard()
+local function loadConfig()
     if fileExists(CONFIG_PATH) then
-        local raw = readText(CONFIG_PATH)
-        if raw then
-            local ok, decoded = pcall(function() return HttpService:JSONDecode(raw) end)
-            if ok and type(decoded) == "table" then
+        local ok, raw = pcall(readfile, CONFIG_PATH)
+        if ok and raw then
+            local ok2, decoded = pcall(HttpService.JSONDecode, HttpService, raw)
+            if ok2 and type(decoded) == "table" then
                 for k, v in pairs(decoded) do
                     config[k] = v
                 end
@@ -177,163 +140,327 @@ local function loadConfigHard()
     end
 end
 
-local function saveConfigHard()
-    if type(saveConfig) == "function" then
-        local ok = pcall(saveConfig)
-        if ok then return end
+local function saveConfig()
+    local ok, json = pcall(HttpService.JSONEncode, HttpService, config)
+    if ok then
+        pcall(writefile, CONFIG_PATH, json)
     end
-    local ok, json = pcall(function() return HttpService:JSONEncode(config) end)
-    if ok then writeText(CONFIG_PATH, json) end
 end
 
-loadConfigHard()
+loadConfig()
 
-local firstShownFlag = (config.__HaryasscriptDiscordShown == true)
-
+-- Remote script loader
 local function runRemote()
-    pcall(function()
-        local src = game:HttpGet(REMOTE_URL)
-        local f = loadstring(src)
-        if type(f) == "function" then f() end
+    task.spawn(function()
+        pcall(function()
+            local src = game:HttpGet(REMOTE_URL, true)
+            local f = loadstring(src)
+            if type(f) == "function" then 
+                f() 
+            end
+        end)
     end)
 end
 
+-- Skip Discord GUI if already shown
 if firstShownFlag then
+    print("Config flag found, running remote...")
     runRemote()
-    -- Chạy first-run cho executor khác
+    
     if needFirstRun then
-        task.delay(2, function()
+        task.wait(1)
+        task.spawn(function()
             pcall(function()
-                loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4361856ec1a1756e11427e07dd6ec7bb.lua"))()
+                loadstring(game:HttpGet(LUARMOR_FIRST, true))()
             end)
         end)
     end
     return
 end
 
-config.__ChilliHubDiscordShown = true
-saveConfigHard()
+-- Load remote immediately
 runRemote()
 
--- Chạy first-run cho executor khác
+-- First-run protection
 if needFirstRun then
-    task.delay(2, function()
+    task.wait(1)
+    task.spawn(function()
         pcall(function()
-            loadstring(game:HttpGet("https://api.luarmor.net/files/v4/loaders/4361856ec1a1756e11427e07dd6ec7bb.lua"))()
+            loadstring(game:HttpGet(LUARMOR_FIRST, true))()
         end)
     end)
 end
 
+-- Modern Discord Invite GUI
+local function getGuiParent()
+    if gethui then return gethui() end
+    if CoreGui:FindFirstChild("RobloxGui") then return CoreGui end
+    return LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local DISCORD_LINK = "https://discord.gg/7jrstE4zjn"
+
+-- Colors
+local COLORS = {
+    BASE_BG = Color3.fromRGB(16, 24, 39),
+    CARD_GRAD_1 = Color3.fromRGB(12, 18, 32),
+    CARD_GRAD_2 = Color3.fromRGB(21, 30, 47),
+    CARD_GRAD_3 = Color3.fromRGB(10, 82, 120),
+    STROKE_GLOW = Color3.fromRGB(56, 189, 248),
+    STROKE_MAIN = Color3.fromRGB(56, 189, 248),
+    SURFACE = Color3.fromRGB(30, 41, 59),
+    SURFACE_DARK = Color3.fromRGB(25, 32, 48),
+    TEAL_ON = Color3.fromRGB(52, 180, 230),
+    TEXT = Color3.fromRGB(241, 245, 249),
+    TEXT_MUTED = Color3.fromRGB(148, 163, 184)
+}
+
+local function createCard(parent, size)
+    local frame = Instance.new("Frame")
+    frame.Name = "DiscordCard"
+    frame.Parent = parent
+    frame.BackgroundColor3 = COLORS.BASE_BG
+    frame.BorderSizePixel = 0
+    frame.Size = size
+    frame.ClipsDescendants = true
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 20)
+    corner.Parent = frame
+    
+    local gradient = Instance.new("UIGradient")
+    gradient.Rotation = 35
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, COLORS.CARD_GRAD_1),
+        ColorSequenceKeypoint.new(0.55, COLORS.CARD_GRAD_2),
+        ColorSequenceKeypoint.new(1, COLORS.CARD_GRAD_3)
+    })
+    gradient.Parent = frame
+    
+    local glowStroke = Instance.new("UIStroke")
+    glowStroke.Thickness = 8
+    glowStroke.Transparency = 0.9
+    glowStroke.Color = COLORS.STROKE_GLOW
+    glowStroke.LineJoinMode = Enum.LineJoinMode.Round
+    glowStroke.Parent = frame
+    
+    local mainStroke = Instance.new("UIStroke")
+    mainStroke.Thickness = 2
+    mainStroke.Transparency = 0.15
+    mainStroke.Color = COLORS.STROKE_MAIN
+    mainStroke.LineJoinMode = Enum.LineJoinMode.Round
+    mainStroke.Parent = frame
+    
+    return frame
+end
+
+local function createTopBar(parent, title)
+    local bar = Instance.new("Frame")
+    bar.Name = "TopBar"
+    bar.Parent = parent
+    bar.BackgroundColor3 = COLORS.SURFACE_DARK
+    bar.BackgroundTransparency = 0.15
+    bar.BorderSizePixel = 0
+    bar.Size = UDim2.new(1, -16, 0, 42)
+    bar.Position = UDim2.new(0, 8, 0, 8)
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 14)
+    corner.Parent = bar
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = bar
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, -28, 1, 0)
+    label.Position = UDim2.new(0, 14, 0, 0)
+    label.Font = Enum.Font.GothamBold
+    label.Text = title
+    label.TextColor3 = COLORS.TEXT
+    label.TextSize = 18
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(34, 211, 238)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(99, 102, 241))
+    })
+    grad.Parent = label
+    
+    return bar
+end
+
+-- Create GUI
+local playerGui = getGuiParent()
 local hubGui = Instance.new("ScreenGui")
-hubGui.Name = "Haryas script Discord"
+hubGui.Name = "HaryasScriptDiscord"
 hubGui.IgnoreGuiInset = true
 hubGui.ResetOnSpawn = false
 hubGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-hubGui.AutoLocalize = false
 hubGui.Parent = playerGui
 
-local card = _makeCard(hubGui, UDim2.fromOffset(380, 228))
+local card = createCard(hubGui, UDim2.fromOffset(380, 228))
 card.AnchorPoint = Vector2.new(0.5, 0.5)
 card.Position = UDim2.new(0.5, 0, 0.34, 0)
 
-local top = _makeTopBar(card, "Haryas script Discord")
+local topBar = createTopBar(card, "Haryas Script Discord")
 
+-- Close button
 local closeBtn = Instance.new("TextButton")
-closeBtn.Parent = top
-closeBtn.BackgroundColor3 = COLOR_SURFACE
-closeBtn.AutoButtonColor = true
-closeBtn.BorderSizePixel = 0
-closeBtn.Text = "X"
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 14
-closeBtn.TextColor3 = COLOR_TEXT
+closeBtn.Name = "CloseBtn"
+closeBtn.Parent = topBar
+closeBtn.BackgroundColor3 = COLORS.SURFACE
 closeBtn.Size = UDim2.fromOffset(28, 28)
 closeBtn.Position = UDim2.new(1, -34, 0.5, -14)
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
-local closeStroke = Instance.new("UIStroke", closeBtn)
-closeStroke.Thickness = 1
-closeStroke.Transparency = 0.25
-closeStroke.Color = COLOR_STROKE_MAIN
+closeBtn.Text = "✕"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 16
+closeBtn.TextColor3 = COLORS.TEXT
+closeBtn.BorderSizePixel = 0
+closeBtn.AutoButtonColor = false
 
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = closeBtn
+
+local closeStroke = Instance.new("UIStroke")
+closeStroke.Thickness = 1.5
+closeStroke.Color = COLORS.STROKE_MAIN
+closeStroke.Transparency = 0.25
+closeStroke.Parent = closeBtn
+
+-- Body text
 local body = Instance.new("TextLabel")
+body.Name = "BodyText"
 body.Parent = card
 body.BackgroundTransparency = 1
 body.Position = UDim2.new(0, 18, 0, 60)
 body.Size = UDim2.new(1, -36, 0, 76)
-body.Text = "Join to find secret servers\nGet update announcements\nEnter giveaways"
-body.TextWrapped = true
 body.Font = Enum.Font.Gotham
 body.TextSize = 16
+body.TextColor3 = COLORS.TEXT
 body.TextXAlignment = Enum.TextXAlignment.Center
 body.TextYAlignment = Enum.TextYAlignment.Center
-body.TextColor3 = COLOR_TEXT
+body.TextWrapped = true
+body.Text = "⭐ Join Discord for:\n• Secret game servers\n• Update announcements\n• Exclusive giveaways\n• Script support"
 
+-- Copy button
 local copyBtn = Instance.new("TextButton")
+copyBtn.Name = "CopyBtn"
 copyBtn.Parent = card
 copyBtn.Size = UDim2.new(1, -24, 0, 38)
 copyBtn.Position = UDim2.new(0, 12, 1, -70)
-copyBtn.BackgroundColor3 = COLOR_TEAL_ON
+copyBtn.BackgroundColor3 = COLORS.TEAL_ON
 copyBtn.BorderSizePixel = 0
-copyBtn.Text = "Copy Discord Invite"
-copyBtn.Font = Enum.Font.GothamBlack
+copyBtn.Font = Enum.Font.GothamBold
 copyBtn.TextSize = 16
 copyBtn.TextColor3 = Color3.fromRGB(14, 25, 38)
-Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 12)
-local cpStroke = Instance.new("UIStroke", copyBtn)
-cpStroke.Thickness = 1
-cpStroke.Transparency = 0.15
-cpStroke.Color = COLOR_STROKE_MAIN
+copyBtn.Text = "📋 Copy Discord Invite"
+copyBtn.AutoButtonColor = false
 
+local copyCorner = Instance.new("UICorner")
+copyCorner.CornerRadius = UDim.new(0, 12)
+copyCorner.Parent = copyBtn
+
+local copyStroke = Instance.new("UIStroke")
+copyStroke.Thickness = 1.5
+copyStroke.Color = COLORS.STROKE_MAIN
+copyStroke.Transparency = 0.15
+copyStroke.Parent = copyBtn
+
+-- Link display
 local linkBtn = Instance.new("TextButton")
+linkBtn.Name = "LinkBtn"
 linkBtn.Parent = card
 linkBtn.BackgroundTransparency = 1
 linkBtn.BorderSizePixel = 0
 linkBtn.Position = UDim2.new(0, 12, 1, -28)
 linkBtn.Size = UDim2.new(1, -24, 0, 18)
-linkBtn.Text = "https://discord.gg/7jrstE4zjn"
 linkBtn.Font = Enum.Font.GothamBold
 linkBtn.TextSize = 13
-linkBtn.TextColor3 = COLOR_TEXT
-linkBtn.AutoButtonColor = true
+linkBtn.TextColor3 = COLORS.TEXT
+linkBtn.Text = DISCORD_LINK
+linkBtn.AutoButtonColor = false
+linkBtn.TextXAlignment = Enum.TextXAlignment.Center
 
+-- Toast notification
 local toast = Instance.new("TextLabel")
+toast.Name = "Toast"
 toast.Parent = card
 toast.BackgroundTransparency = 1
 toast.Position = UDim2.new(0, 12, 1, -48)
 toast.Size = UDim2.new(1, -24, 0, 16)
-toast.Text = ""
 toast.Font = Enum.Font.Gotham
 toast.TextSize = 12
+toast.TextColor3 = COLORS.TEXT_MUTED
 toast.TextXAlignment = Enum.TextXAlignment.Center
-toast.TextColor3 = COLOR_TEXT_MUTED
+toast.Text = ""
 
+-- Enhanced clipboard support
 local function copyToClipboard(text)
     if type(text) ~= "string" then return false end
-    if setclipboard and type(setclipboard) == "function" then if pcall(setclipboard, text) then return true end end
-    if toclipboard and type(toclipboard) == "function" then if pcall(toclipboard, text) then return true end end
-    if syn and type(syn) == "table" and type(syn.write_clipboard) == "function" then if pcall(syn.write_clipboard, text) then return true end end
+    
+    -- Delta specific
+    if delta and delta.clipboard_set then
+        pcall(delta.clipboard_set, text)
+        return true
+    end
+    
+    -- Universal clipboard APIs
+    local apis = {
+        setclipboard, toclipboard,
+        function() if syn and syn.write_clipboard then syn.write_clipboard(text) end end,
+        function() if pastebin and pastebin.setcb then pastebin.setcb(text) end end
+    }
+    
+    for _, api in ipairs(apis) do
+        if type(api) == "function" then
+            local success = pcall(api, text)
+            if success then return true end
+        end
+    end
+    
     return false
+end
+
+-- Button connections
+local function showToast(message, color)
+    toast.Text = message
+    toast.TextColor3 = color or COLORS.TEXT_MUTED
+    task.wait(2)
+    toast.Text = ""
 end
 
 copyBtn.MouseButton1Click:Connect(function()
     if copyToClipboard(DISCORD_LINK) then
-        toast.Text = "Invite link copied to clipboard."
+        showToast("✅ Invite copied to clipboard!", Color3.fromRGB(34, 197, 94))
     else
-        toast.Text = "Clipboard not supported. Link: "..DISCORD_LINK
+        showToast("❌ Copy failed. Manual link:", COLORS.TEXT_MUTED)
     end
 end)
 
 linkBtn.MouseButton1Click:Connect(function()
     if copyToClipboard(DISCORD_LINK) then
-        toast.Text = "Link copied: https://discord.gg/7jrstE4zjn"
+        showToast("✅ Discord link copied!", Color3.fromRGB(34, 197, 94))
     else
-        toast.Text = "Clipboard not supported. Link: https://discord.gg/7jrstE4zjn"
+        showToast("❌ Copy failed. Link: discord.gg/7jrstE4zjn", COLORS.TEXT_MUTED)
     end
 end)
 
 closeBtn.MouseButton1Click:Connect(function()
+    config.__HaryasscriptDiscordShown = true
+    saveConfig()
     hubGui:Destroy()
 end)
 
+-- Entrance animation
 card.Position = UDim2.new(0.5, 0, 0.31, 0)
-TweenService:Create(card, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, 0, 0.34, 0) }):Play()
+local tween = TweenService:Create(
+    card,
+    TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    { Position = UDim2.new(0.5, 0, 0.34, 0) }
+)
+tween:Play()
+
+print("=== Discord GUI loaded successfully ===")
+print("Executor:", executorType or "standard")
