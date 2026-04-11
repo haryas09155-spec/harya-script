@@ -354,7 +354,6 @@ local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
     })
 end
 
-
 -- Initialize SaveManager
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
