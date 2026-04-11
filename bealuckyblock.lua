@@ -353,15 +353,17 @@ end)
 -- Initialize SaveManager
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
-
 SaveManager:IgnoreThemeSettings()
-
 InterfaceManager:SetFolder("FluentScriptHub")
 SaveManager:SetFolder("FluentScriptHub/specific-game")
-
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
-
 SaveManager:LoadAutoloadConfig()
+
+Fluent:Notify({
+    Title = "Join discord", 
+    Content = "join discord",
+    Duration = 5
+})
