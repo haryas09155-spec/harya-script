@@ -3,8 +3,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Be a Lucky Block - FIXED MOVEMENT",
-    SubTitle = "by Haryas script - Auto Move Edition",
+    Title = "Be a Lucky Block",
+    SubTitle = "by Haryas script",
     TabWidth = 160,
     Size = UDim2.fromOffset(550, 430),
     Acrylic = false,
@@ -281,31 +281,22 @@ do
 end
 
 -- EGG FARM TAB - COMPLETELY REWRITTEN WITH SMOOTH MOVEMENT
-Tabs.EggFarm:AddSection("Auto Farm Eggs - SMOOTH MOVEMENT")
+Tabs.EggFarm:AddSection("Auto Farm Eggs - STRAIGHT MOVEMENT")
 
 local eggFarmRunning = false
 local eggSpeed = 1000
 local currentPatrolIndex = 1
 
 local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
-    Title = "Auto Farm Eggs (SMOOTH MOVING)",
-    Description = "Your block MOVES around collecting eggs - NO TP!",
+    Title = "Auto Farm Eggs (STRAIGHT)",
+    Description = "Moves in a direct straight line between points.",
     Default = false
 })
 
 AutoEggFarm:OnChanged(function(state)
     eggFarmRunning = state
-    currentPatrolIndex = 1
     
     if state then
-        -- Remove other bosses logic
-        local bossFolder = workspace:FindFirstChild("BossTouchDetectors")
-        if bossFolder then
-            for _, obj in ipairs(bossFolder:GetChildren()) do
-                if obj.Name ~= "base15" then obj.Parent = nil end
-            end
-        end
-        
         task.spawn(function()
             while eggFarmRunning do
                 local myModel = getMyModel()
@@ -315,61 +306,49 @@ AutoEggFarm:OnChanged(function(state)
                 end
                 
                 local rootPart = myModel.PrimaryPart
-                -- Ensure attribute is set
-                myModel:SetAttribute("MovementSpeed", eggSpeed)
+                local startPos = rootPart.Position
                 
-                -- Define patrol points relative to initial activation position
-                local centerPos = rootPart.Position
+                -- Define straight-line patrol points
+                -- This moves 80 studs out and then back to the start
                 local patrolPoints = {
-                    centerPos + Vector3.new(80, 0, 0),
-                    centerPos + Vector3.new(0, 0, 80),
-                    centerPos + Vector3.new(-80, 0, 0),
-                    centerPos + Vector3.new(0, 0, -80),
-                    centerPos + Vector3.new(60, 0, 60),
-                    centerPos + Vector3.new(-60, 0, -60),
+                    startPos + Vector3.new(80, 0, 0),
+                    startPos,
+                    startPos + Vector3.new(-80, 0, 0),
+                    startPos
                 }
                 
                 local targetPos = patrolPoints[currentPatrolIndex]
-                local startPos = rootPart.Position -- Store the start position for linear interpolation
-                local distance = (startPos - targetPos).Magnitude
+                local currentPos = rootPart.Position
+                local distance = (currentPos - targetPos).Magnitude
                 
-                -- Calculate steps based on distance to keep speed consistent
-                local steps = math.max(20, math.floor(distance / 5)) 
-                
-                for i = 1, steps do
-                    if not eggFarmRunning then break end
+                -- Skip if we are already at the target
+                if distance > 0.5 then
+                    -- Calculate steps for consistent speed
+                    local steps = math.max(10, math.floor(distance / 2)) 
                     
-                    local alpha = i / steps
-                    -- Lerp from the FIXED startPos to targetPos
-                    local newPos = startPos:Lerp(targetPos, alpha)
-                    
-                    -- Smoothly update CFrame and look toward the target or center
-                    rootPart.CFrame = CFrame.new(newPos, targetPos + Vector3.new(0.001, 0, 0)) 
-                    
-                    task.wait(0.02) -- Faster heartbeat for smoother visual
+                    for i = 1, steps do
+                        if not eggFarmRunning then break end
+                        
+                        local alpha = i / steps
+                        -- Move in a perfectly straight line from A to B
+                        local newPos = currentPos:Lerp(targetPos, alpha)
+                        
+                        -- CFrame.new(position) keeps the orientation static (straight)
+                        -- If you want it to FACE where it's going, use: 
+                        -- rootPart.CFrame = CFrame.new(newPos, targetPos)
+                        rootPart.CFrame = CFrame.new(newPos)
+                        
+                        task.wait(0.01) -- Faster wait for higher precision
+                    end
                 end
                 
+                -- Cycle to the next point
                 currentPatrolIndex = (currentPatrolIndex % #patrolPoints) + 1
-                task.wait(0.5) -- Short pause to ensure collection triggers
+                task.wait(0.2) -- Minimal pause
             end
         end)
     end
 end)
-
-local EggSpeedSlider = Tabs.EggFarm:AddSlider("EggSpeed", {
-    Title = "Egg Farm Speed", 
-    Default = 1000, 
-    Min = 100, 
-    Max = 3000, 
-    Rounding = 0,
-    Callback = function(Value)
-        eggSpeed = Value
-        local myModel = getMyModel()
-        if myModel then
-            myModel:SetAttribute("MovementSpeed", eggSpeed)
-        end
-    end
-})
 
 -- Initialize SaveManager
 SaveManager:SetLibrary(Fluent)
@@ -383,8 +362,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
 
-Fluent:Notify({
-    Title = "SCRIPT LOADED ✅", 
-    Content = "Egg Farm now uses SMOOTH MOVEMENT (no TP)! Toggle on Egg Farm tab.",
-    Duration = 5
 })
