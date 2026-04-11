@@ -43,7 +43,6 @@ end
 
 -- Main Tab Features
 do
-    -- Auto Claim Playtime Rewards
     local claimGift = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_knit@1.7.0"):WaitForChild("knit"):WaitForChild("Services"):WaitForChild("PlaytimeRewardService"):WaitForChild("RF"):WaitForChild("ClaimGift")
     local autoClaiming = false
     
@@ -67,7 +66,6 @@ do
         end)
     end)
 
-    -- Auto Rebirth
     local rebirth = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_knit@1.7.0"):WaitForChild("knit"):WaitForChild("Services"):WaitForChild("RebirthService"):WaitForChild("RF"):WaitForChild("Rebirth")
     local rebirthRunning = false
     
@@ -87,7 +85,6 @@ do
         end)
     end)
 
-    -- Redeem Codes
     local redeem = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_knit@1.7.0"):WaitForChild("knit"):WaitForChild("Services"):WaitForChild("CodesService"):WaitForChild("RF"):WaitForChild("RedeemCode")
     local codes = {"release"}
     
@@ -101,7 +98,6 @@ do
         end
     })
 
-    -- Sell Held Brainrot
     Tabs.Main:AddButton({
         Title = "Sell Held Brainrot",
         Callback = function()
@@ -165,7 +161,6 @@ end
 
 -- Brainrots Tab
 do
-    -- Remove Bad Boss Touch Detectors
     local storedParts = {}
     local folder = workspace:WaitForChild("BossTouchDetectors")
     
@@ -192,7 +187,6 @@ do
         end
     end)
 
-    -- Teleport to End
     Tabs.Brainrots:AddButton({
         Title = "Teleport to End",
         Callback = function()
@@ -206,7 +200,6 @@ do
         end
     })
 
-    -- Auto Farm Best Brainrots (MOVEMENT FIXED)
     local autoFarmRunning = false
     
     local AutoFarmToggle = Tabs.Brainrots:AddToggle("AutoFarmToggle", {
@@ -227,9 +220,8 @@ do
                     local rootPart = myModel.PrimaryPart
                     local targetZone = workspace.CollectZones:FindFirstChild("base15")
                     if targetZone then
-                        -- SMOOTH MOVEMENT to base15 (NOT TP)
                         local distance = (rootPart.Position - targetZone.Position).Magnitude
-                        local steps = math.max(20, distance / 10) -- More steps = smoother
+                        local steps = math.max(20, distance / 10)
                         
                         for i = 1, steps do
                             if not autoFarmRunning then break end
@@ -239,7 +231,7 @@ do
                             task.wait(0.05)
                         end
                         
-                        task.wait(1) -- Wait for collection
+                        task.wait(1)
                     end
                     task.wait(0.5)
                 end
@@ -252,7 +244,6 @@ end
 do
     local speedRunning = false
     local sliderValue = 1000
-    local originalSpeed = nil
     
     task.spawn(function()
         while true do
@@ -280,8 +271,15 @@ do
     })
 end
 
--- EGG FARM TAB - COMPLETELY REWRITTEN WITH SMOOTH MOVEMENT
-local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
+-- EGG FARM TAB - FIXED
+do
+    local eggFarmRunning = false
+    local currentPatrolIndex = 1
+    local eggSpeed = 1000
+    local patrolPoints = {}
+    local centerPos = nil
+    
+    local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
         Title = "Auto Farm Eggs",
         Description = "Auto Farm Eggs",
         Default = false
@@ -289,10 +287,8 @@ local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
     
     AutoEggFarm:OnChanged(function(state)
         eggFarmRunning = state
-        currentPatrolIndex = 1
         
         if state then
-            -- Remove other bosses
             local bossFolder = workspace:FindFirstChild("BossTouchDetectors")
             if bossFolder then
                 for _, obj in ipairs(bossFolder:GetChildren()) do
@@ -301,6 +297,23 @@ local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
             end
             
             task.spawn(function()
+                local myModel = getMyModel()
+                if not myModel or not myModel.PrimaryPart then
+                    eggFarmRunning = false
+                    return
+                end
+                
+                centerPos = myModel.PrimaryPart.Position
+                patrolPoints = {
+                    centerPos + Vector3.new(80, 0, 0),
+                    centerPos + Vector3.new(0, 0, 80),
+                    centerPos + Vector3.new(-80, 0, 0),
+                    centerPos + Vector3.new(0, 0, -80),
+                    centerPos + Vector3.new(60, 0, 60),
+                    centerPos + Vector3.new(-60, 0, -60),
+                }
+                currentPatrolIndex = 1
+                
                 while eggFarmRunning do
                     local myModel = getMyModel()
                     if not myModel or not myModel.PrimaryPart then
@@ -309,34 +322,22 @@ local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
                     end
                     
                     local rootPart = myModel.PrimaryPart
-                    rootPart.Parent:SetAttribute("MovementSpeed", eggSpeed)
+                    myModel:SetAttribute("MovementSpeed", eggSpeed)
                     
-                    -- Create patrol points around current position
-                    local centerPos = rootPart.Position
-                    local patrolPoints = {
-                        centerPos + Vector3.new(80, 0, 0),    -- Right
-                        centerPos + Vector3.new(0, 0, 80),    -- Forward  
-                        centerPos + Vector3.new(-80, 0, 0),   -- Left
-                        centerPos + Vector3.new(0, 0, -80),   -- Backward
-                        centerPos + Vector3.new(60, 0, 60),   -- Diagonal 1
-                        centerPos + Vector3.new(-60, 0, -60), -- Diagonal 2
-                    }
-                    
-                    -- Move to next patrol point (SMOOTH MOVEMENT)
                     local targetPos = patrolPoints[currentPatrolIndex]
                     local distance = (rootPart.Position - targetPos).Magnitude
-                    local steps = math.max(30, distance / 8) -- Smooth movement
+                    local steps = math.max(30, distance / 8)
                     
                     for i = 1, steps do
                         if not eggFarmRunning then break end
                         local alpha = i / steps
                         local newPos = rootPart.Position:Lerp(targetPos, alpha)
-                        rootPart.CFrame = CFrame.new(newPos, centerPos) -- Face center
+                        rootPart.CFrame = CFrame.new(newPos)
                         task.wait(0.03)
                     end
                     
                     currentPatrolIndex = (currentPatrolIndex % #patrolPoints) + 1
-                    task.wait(0.8) -- Pause at each point for collection
+                    task.wait(0.8)
                 end
             end)
         end
@@ -354,7 +355,6 @@ local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
     })
 end
 
--- Initialize SaveManager
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
