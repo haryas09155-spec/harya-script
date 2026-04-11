@@ -281,75 +281,79 @@ do
 end
 
 -- EGG FARM TAB - COMPLETELY REWRITTEN WITH SMOOTH MOVEMENT
-Tabs.EggFarm:AddSection("Auto Farm Eggs")
-
-local eggFarmRunning = false
-local currentPatrolIndex = 1
-
 local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
-    Title = "Auto Farm Eggs",
-    Description = "Auto Farm Eggs",
-    Default = false
-})
-
-AutoEggFarm:OnChanged(function(state)
-    if state then
-        task.spawn(function()
-            local myModel = getMyModel()
-            if not myModel or not myModel.PrimaryPart then 
-                AutoEggFarm:SetValue(false)
-                return 
-            end
-
-            eggFarmRunning = true
-            local rootPart = myModel.PrimaryPart
-            local originPos = rootPart.Position 
-            
-            local patrolPoints = {
-                originPos + Vector3.new(80, 0, 0),
-                originPos,
-                originPos + Vector3.new(-80, 0, 0),
-                originPos
-            }
-
-            while eggFarmRunning do
-                if not myModel.Parent or not rootPart.Parent then
-                    break
+        Title = "Auto Farm Eggs",
+        Description = "Auto Farm Eggs",
+        Default = false
+    })
+    
+    AutoEggFarm:OnChanged(function(state)
+        eggFarmRunning = state
+        currentPatrolIndex = 1
+        
+        if state then
+            -- Remove other bosses
+            local bossFolder = workspace:FindFirstChild("BossTouchDetectors")
+            if bossFolder then
+                for _, obj in ipairs(bossFolder:GetChildren()) do
+                    if obj.Name ~= "base15" then obj.Parent = nil end
                 end
-
-                local targetPos = patrolPoints[currentPatrolIndex]
-                local startLegPos = rootPart.Position
-                local distance = (startLegPos - targetPos).Magnitude
-                
-                if distance > 0.5 then
-                    local steps = math.max(10, math.floor(distance / 2)) 
+            end
+            
+            task.spawn(function()
+                while eggFarmRunning do
+                    local myModel = getMyModel()
+                    if not myModel or not myModel.PrimaryPart then
+                        task.wait(1)
+                        continue
+                    end
+                    
+                    local rootPart = myModel.PrimaryPart
+                    rootPart.Parent:SetAttribute("MovementSpeed", eggSpeed)
+                    
+                    -- Create patrol points around current position
+                    local centerPos = rootPart.Position
+                    local patrolPoints = {
+                        centerPos + Vector3.new(80, 0, 0),    -- Right
+                        centerPos + Vector3.new(0, 0, 80),    -- Forward  
+                        centerPos + Vector3.new(-80, 0, 0),   -- Left
+                        centerPos + Vector3.new(0, 0, -80),   -- Backward
+                        centerPos + Vector3.new(60, 0, 60),   -- Diagonal 1
+                        centerPos + Vector3.new(-60, 0, -60), -- Diagonal 2
+                    }
+                    
+                    -- Move to next patrol point (SMOOTH MOVEMENT)
+                    local targetPos = patrolPoints[currentPatrolIndex]
+                    local distance = (rootPart.Position - targetPos).Magnitude
+                    local steps = math.max(30, distance / 8) -- Smooth movement
                     
                     for i = 1, steps do
-                        if not eggFarmRunning or not myModel.Parent or not rootPart.Parent then 
-                            break 
-                        end
-                        
+                        if not eggFarmRunning then break end
                         local alpha = i / steps
-                        local newPos = startLegPos:Lerp(targetPos, alpha)
-                        
-                        local rotation = rootPart.CFrame - rootPart.CFrame.Position
-                        rootPart.CFrame = CFrame.new(newPos) * rotation
-                        
-                        task.wait(0.01)
+                        local newPos = rootPart.Position:Lerp(targetPos, alpha)
+                        rootPart.CFrame = CFrame.new(newPos, centerPos) -- Face center
+                        task.wait(0.03)
                     end
+                    
+                    currentPatrolIndex = (currentPatrolIndex % #patrolPoints) + 1
+                    task.wait(0.8) -- Pause at each point for collection
                 end
-                
-                currentPatrolIndex = (currentPatrolIndex % #patrolPoints) + 1
-                task.wait(0.1)
+            end)
+        end
+    end)
+    
+    local EggSpeedSlider = Tabs.EggFarm:AddSlider("EggSpeed", {
+        Title = "Egg Farm Speed", Default = 1000, Min = 100, Max = 3000, Rounding = 0,
+        Callback = function(Value)
+            eggSpeed = Value
+            local myModel = getMyModel()
+            if myModel then
+                myModel:SetAttribute("MovementSpeed", eggSpeed)
             end
-            
-            eggFarmRunning = false
-        end)
-    else
-        eggFarmRunning = false
-        currentPatrolIndex = 1
-    end
-end)
+        end
+    })
+end
+
 
 -- Initialize SaveManager
 SaveManager:SetLibrary(Fluent)
