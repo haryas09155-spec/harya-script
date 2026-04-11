@@ -281,72 +281,73 @@ do
 end
 
 -- EGG FARM TAB - COMPLETELY REWRITTEN WITH SMOOTH MOVEMENT
-Tabs.EggFarm:AddSection("Auto Farm Eggs - STRAIGHT MOVEMENT")
+Tabs.EggFarm:AddSection("Auto Farm Eggs")
 
 local eggFarmRunning = false
-local eggSpeed = 1000
 local currentPatrolIndex = 1
 
 local AutoEggFarm = Tabs.EggFarm:AddToggle("AutoEggFarm", {
-    Title = "Auto Farm Eggs (STRAIGHT)",
-    Description = "Moves in a direct straight line between points.",
+    Title = "Auto Farm Eggs",
+    Description = "Auto Farm Eggs",
     Default = false
 })
 
 AutoEggFarm:OnChanged(function(state)
-    eggFarmRunning = state
-    
     if state then
         task.spawn(function()
+            local myModel = getMyModel()
+            if not myModel or not myModel.PrimaryPart then 
+                AutoEggFarm:SetValue(false)
+                return 
+            end
+
+            eggFarmRunning = true
+            local rootPart = myModel.PrimaryPart
+            local originPos = rootPart.Position 
+            
+            local patrolPoints = {
+                originPos + Vector3.new(80, 0, 0),
+                originPos,
+                originPos + Vector3.new(-80, 0, 0),
+                originPos
+            }
+
             while eggFarmRunning do
-                local myModel = getMyModel()
-                if not myModel or not myModel.PrimaryPart then
-                    task.wait(1)
-                    continue
+                if not myModel.Parent or not rootPart.Parent then
+                    break
                 end
-                
-                local rootPart = myModel.PrimaryPart
-                local startPos = rootPart.Position
-                
-                -- Define straight-line patrol points
-                -- This moves 80 studs out and then back to the start
-                local patrolPoints = {
-                    startPos + Vector3.new(80, 0, 0),
-                    startPos,
-                    startPos + Vector3.new(-80, 0, 0),
-                    startPos
-                }
-                
+
                 local targetPos = patrolPoints[currentPatrolIndex]
-                local currentPos = rootPart.Position
-                local distance = (currentPos - targetPos).Magnitude
+                local startLegPos = rootPart.Position
+                local distance = (startLegPos - targetPos).Magnitude
                 
-                -- Skip if we are already at the target
                 if distance > 0.5 then
-                    -- Calculate steps for consistent speed
                     local steps = math.max(10, math.floor(distance / 2)) 
                     
                     for i = 1, steps do
-                        if not eggFarmRunning then break end
+                        if not eggFarmRunning or not myModel.Parent or not rootPart.Parent then 
+                            break 
+                        end
                         
                         local alpha = i / steps
-                        -- Move in a perfectly straight line from A to B
-                        local newPos = currentPos:Lerp(targetPos, alpha)
+                        local newPos = startLegPos:Lerp(targetPos, alpha)
                         
-                        -- CFrame.new(position) keeps the orientation static (straight)
-                        -- If you want it to FACE where it's going, use: 
-                        -- rootPart.CFrame = CFrame.new(newPos, targetPos)
-                        rootPart.CFrame = CFrame.new(newPos)
+                        local rotation = rootPart.CFrame - rootPart.CFrame.Position
+                        rootPart.CFrame = CFrame.new(newPos) * rotation
                         
-                        task.wait(0.01) -- Faster wait for higher precision
+                        task.wait(0.01)
                     end
                 end
                 
-                -- Cycle to the next point
                 currentPatrolIndex = (currentPatrolIndex % #patrolPoints) + 1
-                task.wait(0.2) -- Minimal pause
+                task.wait(0.1)
             end
+            
+            eggFarmRunning = false
         end)
+    else
+        eggFarmRunning = false
+        currentPatrolIndex = 1
     end
 end)
 
