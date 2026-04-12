@@ -562,10 +562,27 @@ end
 
 -- Event Tab Features
 do
-    Tabs.Event:AddSection("Easter Event")
+    Tabs.Event:AddSection("Event")
 
     local autoFarmEgg = false
-    local eggFolder = workspace:FindFirstChild("Eggs") or workspace:FindFirstChild("EasterEggs") or workspace
+    local collectedEggs = {}
+
+    -- safer egg finder
+    local function isEgg(obj)
+        return obj:IsA("BasePart") 
+        and obj.Parent 
+        and (obj.Name:lower():find("egg") or obj.Name:lower():find("easter"))
+    end
+
+    local function getEggs()
+        local eggs = {}
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if isEgg(v) then
+                table.insert(eggs, v)
+            end
+        end
+        return eggs
+    end
 
     local AFE = Tabs.Event:AddToggle("AFE", {
         Title = "Auto Farm Easter Eggs",
@@ -575,28 +592,101 @@ do
 
     AFE:OnChanged(function(state)
         autoFarmEgg = state
-        if not state then return end
+        
+        if not state then 
+            table.clear(collectedEggs)
+            return 
+        end
         
         task.spawn(function()
             while autoFarmEgg do
                 local character = player.Character
                 local root = character and character:FindFirstChild("HumanoidRootPart")
-                
-                if root then
-                    -- Search for eggs in common locations
-                    for _, v in pairs(eggFolder:GetDescendants()) do
-                        if not autoFarmEgg then break end
-                        if v:IsA("BasePart") and (v.Name:find("Egg") or v.Name:find("Easter")) and v.CanTouch then
-                            -- Teleport to egg
-                            root.CFrame = v.CFrame
-                            task.wait(0.1) -- Small delay to ensure collection
-                        end
+
+                if not root then
+                    task.wait(0.5)
+                    continue
+                end
+
+                local eggs = getEggs()
+                local found = false
+
+                for _, egg in ipairs(eggs) do
+                    if not autoFarmEgg then break end
+
+                    if egg and egg.Parent and not collectedEggs[egg] then
+                        pcall(function()
+                            root.CFrame = egg.CFrame + Vector3.new(0, 3, 0)
+                        end)
+
+                        collectedEggs[egg] = true
+                        found = true
+                        task.wait(0.15)
+                        break
                     end
                 end
-                task.wait(0.5)
+
+                task.wait(found and 0.2 or 0.5)
             end
         end)
     end)
+
+    Tabs.Event:AddSection("Event Actions")
+
+    Tabs.Event:AddButton({
+        Title = "Reset Collected Eggs",
+        Callback = function()
+            table.clear(collectedEggs)
+            Fluent:Notify({
+                Title = "Reset!",
+                Content = "Collected eggs list has been cleared",
+                Duration = 3
+            })
+        end
+    })
+
+    Tabs.Event:AddButton({
+        Title = "Teleport to Nearest Egg",
+        Callback = function()
+            local character = player.Character
+            local root = character and character:FindFirstChild("HumanoidRootPart")
+
+            if not root then
+                Fluent:Notify({Title = "ERROR!", Content = "Character/Root not found", Duration = 3})
+                return
+            end
+
+            local nearestEgg, nearestDistance = nil, math.huge
+
+            for _, v in ipairs(workspace:GetDescendants()) do
+                if isEgg(v) then
+                    local dist = (v.Position - root.Position).Magnitude
+                    if dist < nearestDistance then
+                        nearestDistance = dist
+                        nearestEgg = v
+                    end
+                end
+            end
+
+            if nearestEgg then
+                pcall(function()
+                    root.CFrame = nearestEgg.CFrame + Vector3.new(0, 3, 0)
+                end)
+
+                Fluent:Notify({
+                    Title = "Teleported!",
+                    Content = "Nearest egg found",
+                    Duration = 2
+                })
+            else
+                Fluent:Notify({
+                    Title = "Not Found!",
+                    Content = "No eggs available",
+                    Duration = 3
+                })
+            end
+        end
+    })
 end
   
 -- Initialize SaveManager and InterfaceManager
