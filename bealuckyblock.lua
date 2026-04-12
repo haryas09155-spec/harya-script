@@ -560,24 +560,50 @@ do
     })
 end
 
--- Event Tab Features
+-- Event Tab Features (FULL AUTO DETECT)
 do
     Tabs.Event:AddSection("Event")
 
     local autoFarmEgg = false
-    local collectedEggs = {}
 
+    -- Detect if object is egg
     local function isEgg(v)
         return v:IsA("BasePart")
         and v.Parent
         and (v.Name:lower():find("egg") or v.Name:lower():find("easter"))
     end
 
+    -- Try ALL possible collection methods
+    local function collectEgg(root, egg)
+        -- 1. ProximityPrompt
+        local prompt = egg:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            fireproximityprompt(prompt)
+            return true
+        end
+
+        -- 2. ClickDetector
+        local click = egg:FindFirstChildOfClass("ClickDetector")
+        if click then
+            fireclickdetector(click)
+            return true
+        end
+
+        -- 3. Touch method
+        pcall(function()
+            firetouchinterest(root, egg, 0)
+            firetouchinterest(root, egg, 1)
+        end)
+
+        return false
+    end
+
+    -- Find nearest egg
     local function getNearestEgg(root)
         local nearest, dist = nil, math.huge
 
         for _, v in ipairs(workspace:GetDescendants()) do
-            if isEgg(v) and not collectedEggs[v] then
+            if isEgg(v) then
                 local d = (v.Position - root.Position).Magnitude
                 if d < dist then
                     dist = d
@@ -589,19 +615,15 @@ do
         return nearest
     end
 
-    local AFE = Tabs.Event:AddToggle("AFE_SMART", {
-        Title = "Auto Farm Easter Eggs (Smart)",
-        Description = "Fast nearest-egg",
+    local AFE = Tabs.Event:AddToggle("AFE", {
+        Title = "Auto Farm Easter Eggs",
+        Description = "collection method automatically",
         Default = false
     })
 
     AFE:OnChanged(function(state)
         autoFarmEgg = state
-        
-        if not state then
-            table.clear(collectedEggs)
-            return
-        end
+        if not state then return end
 
         task.spawn(function()
             while autoFarmEgg do
@@ -609,23 +631,29 @@ do
                 local root = char and char:FindFirstChild("HumanoidRootPart")
 
                 if not root then
-                    task.wait(0.3)
+                    task.wait(0.2)
                     continue
                 end
 
                 local egg = getNearestEgg(root)
 
                 if egg then
-                    pcall(function()
-                        root.CFrame = egg.CFrame + Vector3.new(0, 2.5, 0)
-                    end)
+                    -- LOCK ON TARGET
+                    local startTime = tick()
 
-                    collectedEggs[egg] = true
-                    task.wait(0.12) -- fast like video
+                    while autoFarmEgg and egg and egg.Parent and (tick() - startTime < 2) do
+                        -- Move to egg
+                        pcall(function()
+                            root.CFrame = egg.CFrame + Vector3.new(0, 2.5, 0)
+                        end)
+
+                        -- Try collect
+                        collectEgg(root, egg)
+
+                        task.wait(0.05)
+                    end
                 else
-                    -- reset if no eggs found (new spawn cycle)
-                    table.clear(collectedEggs)
-                    task.wait(0.5)
+                    task.wait(0.3)
                 end
             end
         end)
