@@ -17,7 +17,6 @@ local RepoURL = "https://raw.githubusercontent.com/haryas09155-spec/harya-script
 
 -- Map your Game IDs to the script file names in your repository
 local GameList = {
-    -- EXAMPLES (Replace with your actual Game IDs and file names):
     ["18668065416"]  = "Blue-Lock.lua", 
     ["11708967881"]  = "YeetAFriend.lua",
     ["124473577469410"] = "bealuckyblock.lua",
@@ -118,8 +117,14 @@ end
 -- ==========================================
 -- EXECUTION LOGIC
 -- ==========================================
-local GameId = tostring(game.GameId)
+-- Check PlaceId first, then fallback to GameId
+local GameId = tostring(game.PlaceId)
 local ScriptName = GameList[GameId]
+
+if not ScriptName then
+    GameId = tostring(game.GameId)
+    ScriptName = GameList[GameId]
+end
 
 if not ScriptName then
     StarterGui:SetCore("SendNotification", {
