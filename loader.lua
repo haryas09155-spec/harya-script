@@ -15,7 +15,6 @@ local LocalPlayer = cloneref(Players.LocalPlayer)
 -- ==========================================
 local RepoURL = "https://raw.githubusercontent.com/haryas09155-spec/harya-script/main/"
 
--- Map your Game IDs to the script file names in your repository
 local GameList = {
     ["18668065416"]  = "Blue-Lock.lua", 
     ["11708967881"]  = "YeetAFriend.lua",
@@ -85,7 +84,6 @@ local function CreateUI()
     SubtitleLabel.TextTransparency = 1
     SubtitleLabel.Parent = MainFrame
 
-    -- Loading Bar
     local BarBackground = Instance.new("Frame")
     BarBackground.Size = UDim2.new(0.8, 0, 0, 4)
     BarBackground.Position = UDim2.new(0.1, 0, 0, 100)
@@ -99,7 +97,6 @@ local function CreateUI()
     BarFill.BorderSizePixel = 0
     BarFill.Parent = BarBackground
 
-    -- Tween Intro Animation
     local TweenInfo1 = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     local TweenInfo2 = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
@@ -117,6 +114,23 @@ end
 -- ==========================================
 -- EXECUTION LOGIC
 -- ==========================================
+-- Universal HTTP Request function
+local function FetchScript(url)
+    local response = nil
+    local success, err = pcall(function()
+        if request then
+            response = request({Url = url, Method = "GET"}).Body
+        elseif http_request then
+            response = http_request({Url = url, Method = "GET"}).Body
+        elseif http_get then
+            response = http_get(url)
+        else
+            response = game:HttpGet(url)
+        end
+    end)
+    return success, response, err
+end
+
 -- Check PlaceId first, then fallback to GameId
 local GameId = tostring(game.PlaceId)
 local ScriptName = GameList[GameId]
@@ -129,8 +143,8 @@ end
 if not ScriptName then
     StarterGui:SetCore("SendNotification", {
         Title = "Harya Script",
-        Text = "This game is not supported.",
-        Icon = "rbxassetid://137698471325689",
+        Text = "Game not supported! PlaceId: " .. tostring(game.PlaceId) .. " | GameId: " .. tostring(game.GameId),
+        Duration = 10
     })
     return
 end
@@ -139,16 +153,15 @@ local UI, Blur, Frame, StatusText = CreateUI()
 
 -- Update status and fetch script
 StatusText.Text = "Connecting to repository..."
-local success, response = pcall(function()
-    return game:HttpGet(RepoURL .. ScriptName)
-end)
+local targetUrl = RepoURL .. ScriptName
+local success, response, err = FetchScript(targetUrl)
 
-if not success then
+if not success or not response or #response < 10 then
     StatusText.Text = "Failed to load script!"
     StarterGui:SetCore("SendNotification", {
         Title = "Harya Script",
-        Text = "HTTP Request failed. Check your connection.",
-        Duration = 5
+        Text = "HTTP Request failed. Error: " .. tostring(err or "Empty response"),
+        Duration = 7
     })
     task.wait(3)
     -- Close UI
@@ -163,12 +176,22 @@ end
 StatusText.Text = "Executing script..."
 task.wait(0.5)
 
-local execSuccess, execError = pcall(function()
-    loadstring(response)()
-end)
-
-if not execSuccess then
-    warn("Error executing " .. ScriptName .. ": " .. tostring(execError))
+local func, syntaxErr = loadstring(response)
+if not func then
+    StarterGui:SetCore("SendNotification", {
+        Title = "Harya Script",
+        Text = "Script syntax error: " .. tostring(syntaxErr),
+        Duration = 7
+    })
+else
+    local execSuccess, execError = pcall(func)
+    if not execSuccess then
+        StarterGui:SetCore("SendNotification", {
+            Title = "Harya Script",
+            Text = "Execution error: " .. tostring(execError),
+            Duration = 7
+        })
+    end
 end
 
 -- Close UI smoothly after execution
