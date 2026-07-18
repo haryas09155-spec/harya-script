@@ -21,6 +21,7 @@ local GameList = {
     ["124473577469410"] = "bealuckyblock.lua",
     ["8908228901"] = "sharkbite2.lua",
     ["97598239454123"] = "gag2.lua",
+    ["82524183928567"] = "buildasoccersquad.lua",
 }
 
 local Config = {
